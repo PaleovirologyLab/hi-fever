@@ -5,7 +5,20 @@ nextflow.enable.dsl=2
 
 // Script parameters
 params.ftp_file = "/home/user/Desktop/Pipeline-dev/genomes_draft.txt"
-params.query_file_aa = ""
+params.query_file_aa = "/home/user/Desktop/Pipeline-dev/Benchmark/Genomes/Circoviridae_NCBIvirus_25May23.fasta"
+
+process build_diamond_db() {
+
+    output:
+    path "*.dmnd"
+
+    """
+
+    diamond makedb --in $params.query_file_aa -d virusdb
+
+    """
+
+}
 
 process read {
 
@@ -77,26 +90,8 @@ process download {
     """
 }
 
-process build_diamond {
-
-    input:
-    path z
-
-    output:
-    path "*.diamond.results.txt"
-
-    """
-
-
-
-    """
-
-}
-
-
-
 workflow {
+    build_diamond_db()
     def ftp_ch = Channel.fromPath(params.ftp_file)
-
     read(ftp_ch).flatten() | download
 }
