@@ -11,6 +11,7 @@ process build_diamond_db() {
 
     output:
     path "*.dmnd"
+    publishDir "virusdb"
 
     """
 
@@ -20,7 +21,7 @@ process build_diamond_db() {
 
 }
 
-process read {
+process parse_ftp {
 
     input:
     path x
@@ -45,7 +46,9 @@ process read {
 
 }
 
-process download {
+process download_assemblies {
+
+    debug true
 
     input:
     path y
@@ -65,8 +68,8 @@ process download {
     # Downloads and checks assembly file for corruption, re-attempts if md5 check fails
     md5check_function () {
         assembly_ID=`echo \$line | sed 's/^.*\\///'`
-        wget \$line/\${assembly_ID}_genomic.fna.gz
-        wget \$line/md5checksums.txt
+        wget -q \$line/\${assembly_ID}_genomic.fna.gz
+        wget -q \$line/md5checksums.txt
         assemblyFile=`ls -1 *genomic.fna.gz`
         grep \$assemblyFile md5checksums.txt > \$assemblyFile.md5; rm md5checksums.txt
         status=`md5sum -c \$assemblyFile.md5 2>/dev/null | sed 's/.* //'`
@@ -90,8 +93,28 @@ process download {
     """
 }
 
+process diamond {
+
+    maxForks 1
+    debug true
+
+    input:
+    path x
+
+    output:
+    path "*.dmnd.tsv"
+
+    """
+    
+    diamond blastx --very-sensitive --masking seg -d /home/user/Desktop/Pipeline-dev/virusdb/virusdb.dmnd -q $x -o matches.dmnd.tsv
+
+
+    """
+
+}
+
 workflow {
     build_diamond_db()
     def ftp_ch = Channel.fromPath(params.ftp_file)
-    read(ftp_ch).flatten() | download
+    parse_ftp(ftp_ch).flatten() | download_assemblies | diamond
 }
