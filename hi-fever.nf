@@ -4,8 +4,10 @@
 nextflow.enable.dsl=2
 
 // Script parameters
-params.ftp_file = "/home/user/Desktop/Pipeline-dev/genomes_draft.txt"
-params.query_file_aa = "/home/user/Desktop/Pipeline-dev/Benchmark/Genomes/Circoviridae_NCBIvirus_25May23.fasta"
+params.ftp_file = "$PWD/ftp_list.txt"
+params.query_file_aa = "$PWD/protein_query.fasta"
+params.diamond_mode ="--very-sensitive"
+params.diamond_matrix="BLOSUM62"
 
 process build_diamond_db() {
 
@@ -14,7 +16,6 @@ process build_diamond_db() {
     publishDir "virusdb"
 
     """
-
     diamond makedb --in $params.query_file_aa -d virusdb
 
     """
@@ -106,8 +107,7 @@ process diamond {
 
     """
     
-    diamond blastx --very-sensitive --masking seg -d /home/user/Desktop/Pipeline-dev/virusdb/virusdb.dmnd -q $x -o matches.dmnd.tsv
-
+    diamond blastx $params.diamond_mode --matrix $params.diamond_matrix --masking seg -d $PWD/virusdb/virusdb.dmnd -q $x -o matches.dmnd.tsv
 
     """
 
