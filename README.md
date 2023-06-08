@@ -45,7 +45,7 @@ Set [DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-C
 
 - `--diamond_matrix BLOSUM45`
 
-Include translation of DIAMOND aligned region (off by default).
+Include translation of the assembly region aligned by DIAMOND (off by default).
 
 - `--translate qseq_translated`
 
