@@ -45,10 +45,6 @@ Set [DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-C
 
 - `--diamond_matrix BLOSUM45`
 
-Include translation of the assembly region aligned by DIAMOND (off by default).
-
-- `--translate qseq_translated`
-
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
