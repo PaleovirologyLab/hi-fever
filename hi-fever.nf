@@ -133,7 +133,7 @@ process bedtools {
     """
 
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' \
-    $x | sort -k1,1 -k2,2n | bedtools merge > diamond-result.nonredundant.bed
+    $x | sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
 
     """
 
