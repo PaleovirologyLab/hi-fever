@@ -142,5 +142,5 @@ process bedtools {
 workflow {
     build_diamond_db()
     def ftp_ch = Channel.fromPath(params.ftp_file)
-    parse_ftp(ftp_ch).flatten() | download_assemblies | diamond
+    parse_ftp(ftp_ch).flatten() | download_assemblies | diamond | bedtools
 }
