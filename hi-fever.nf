@@ -116,7 +116,24 @@ process diamond {
     -d $PWD/virusdb/virusdb.dmnd \
     -q $x \
     -o matches.dmnd.tsv \
-    --outfmt 6 qseqid qstart qend qframe sseqid pident length slen mismatch gapopen evalue bitscore
+    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
+
+    """
+
+}
+
+process bedtools {
+
+    input:
+    path x
+
+    output:
+    path "*.nonredundant.bed"
+
+    """
+
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' \
+    $x | sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
 
     """
 
