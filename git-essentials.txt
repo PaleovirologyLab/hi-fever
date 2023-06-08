@@ -1,0 +1,37 @@
+# Collaboration with git
+
+# Make and track local version of remote
+git checkout -b NAME remote/origin/NAME
+
+# "Start of day" - new feature branch
+git checkout dev && git pull origin dev
+git checkout -b newFeature dev
+
+# "Start of day" - continue working on existing feature branch
+git checkout dev && git pull origin dev
+git checkout newFeature && git merge dev
+
+# Do work in that branch
+git add FILE.txt    # stage
+git commit -m "message about commit"  # Commits the changes
+
+# "End of day" procedure (if merging back to dev)
+git checkout dev && git pull origin dev
+git checkout newFeature && git merge dev
+git checkout dev && git merge newFeature
+git push origin dev
+
+# "End of day" procedure (if code review needed - pull request)
+git checkout dev && git pull origin dev
+git checkout newFeature && git merge dev
+git push -u origin newFeature
+gh pr create --base dev --head newFeature --title "This feature was fixed"
+
+# Cleanup of a redundant feature branch (e.g. after successful merge into dev)
+git branch -d newFeature                                                
+
+# Update main from dev ("End of week" / logical endpoint in version)
+git checkout main && git pull origin main
+git checkout dev && git merge main
+git checkout main && git merge dev
+git push origin main
