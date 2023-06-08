@@ -8,6 +8,7 @@ params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
 params.diamond_mode ="very-sensitive"
 params.diamond_matrix="BLOSUM62"
+params.translate = ""
 
 process build_diamond_db() {
 
@@ -107,7 +108,14 @@ process diamond {
 
     """
     
-    diamond blastx --$params.diamond_mode --matrix $params.diamond_matrix --masking seg -d $PWD/virusdb/virusdb.dmnd -q $x -o matches.dmnd.tsv
+    diamond blastx \
+    --$params.diamond_mode \
+    --matrix $params.diamond_matrix \
+    --masking seg \
+    -d $PWD/virusdb/virusdb.dmnd \
+    -q $x \
+    -o matches.dmnd.tsv \
+    --outfmt 6 qseqid qstart qend qframe sseqid pident length slen mismatch gapopen evalue bitscore $params.translate
 
     """
 
