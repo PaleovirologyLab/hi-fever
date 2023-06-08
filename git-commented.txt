@@ -1,0 +1,70 @@
+# Collaboration with git
+
+# Branches are versions of the repo that are independent from each other. The file sytem might look identical at first, but the branches cannot see each other.
+# Branch naming + what each if for
+main = "production" version. Backup of finished versions
+dev = reference development branch, merged into main at logical endpoints
+feature = all smaller features are made in branches from dev, merged every day/every few days back into dev
+
+
+# View branches/current branch
+$ git branch
+$ git branch -a   # Also list remote branches
+$ git status
+
+# Work with a remote branch that you don't have locally yet
+$ git checkout -b NAME remote/origin/NAME
+
+
+# Create and use a new feature branch
+$ git checkout dev && git pull origin dev    # Update the source branch prior to feature branching
+$ git checkout -b newFeature dev             # Create a new branch from dev and switch to it
+
+# Or enter and update a branch previously made 
+
+$ git checkout dev && git pull origin dev
+$ git checkout newFeature && git merge dev
+
+
+# Do work in that branch
+# Basic commands for tracking these change (no need to push to remote, unless you want to back up significant numbers of changes or collaborate on that branch)
+$ git add .   # Stages everything in the directory. Must be run again prior to any commit, to stage which changes should be part of a commit.
+$ git commit -m "message about commit"  # Commits the changes 
+
+
+# Workflow for safely merging a new feature to dev. 
+# Part 1. Update dev (in general, assume that dev is no longer identical to when you branched it)
+$ git checkout dev && git pull origin dev    # Ensure dev up to date
+$ git checkout newFeature && git merge dev   # Switch back to your feature branch and bring over any changes to dev
+
+# Part 2. Two possible approaches here.
+
+# Approach 1 (merge without code review): Merge and push
+$ git checkout dev && git merge newFeature
+$ git push origin dev
+
+# Approach 2 (if code review is required): Make a pull request
+$ git push -u origin newFeature                                                # Push the new feature branch to remote, then go to GitHub and create a pull request OR push and then:
+$ gh pr create --base dev --head newFeature --title "This feature was fixed"   # Use GitHub CLI to create the PR. Many other options if cutomisation desired.
+
+
+# Cleanup. Once a feature branch is merged into dev, it's technically no longer needed.
+# Cleanup can be done a few ways (note that if you also pushed to remote, it won't be deleted there).
+# Approach 1. Merge as described above, and then simply delete the feature branch
+$ git branch -d newFeature                                                # -d keeps this safe, as it will fail if the branch isn't merged. -D would delete an unmerged branch. 
+# Approach 2. Combine the merge and delete.
+$ git checkout dev && git merge newFeature && git branch -d newFeature    # Again, this is safe. If merging fails, the deletion will also.
+$ git push origin dev
+
+# To delete a remote branch (if you pushed it to remote only)
+$ git push origin -d newFeature
+
+# To update main from dev
+$ git checkout main && git pull origin main   # Update main
+$ git checkout dev && git merge main          # Merge main to dev (if any conflicts, these can then be resolved in dev while keeping main clean)
+$ git checkout main && git merge dev          # Merge dev to main
+$ git push origin main                        # Update remote main
+
+
+
+
