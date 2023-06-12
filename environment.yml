@@ -46,7 +46,7 @@ dependencies:
   - libxcb=1.15=h7f8727e_0
   - libzlib=1.2.13=h166bdaf_4
   - llvm-openmp=16.0.5=h4dfa4b3_0
-  - ncurses=6.4=h6a678d5_0
+  - conda-forge::ncurses
   - nextflow=23.04.1=h2a3209d_3
   - numpy=1.21.6=py37h976b520_0
   - openjdk=11.0.13=h87a67e3_0
