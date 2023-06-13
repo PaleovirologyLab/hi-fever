@@ -6,18 +6,29 @@ nextflow.enable.dsl=2
 // Script parameters
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
+params.mmseqs_minseqid = "0.95"
+params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
 params.diamond_matrix = "BLOSUM62"
+params.diamond_cpus = "12"
 
-process build_diamond_db() {
+process build_db {
+
+    input:
+    path x
 
     output:
-    path "*.dmnd"
+    path "DB_clu_rep.fasta"
+    path "virusdb.dmnd"
     publishDir "virusdb"
 
     """
 
-    diamond makedb --in $params.query_file_aa -d virusdb
+    mmseqs createdb $x DB
+    mmseqs cluster --min-seq-id $params.mmseqs_minseqid -c $params.mmseqs_cover DB DB_clu tmp
+    mmseqs createsubdb DB_clu DB DB_clu_rep
+    mmseqs convert2fasta DB_clu_rep DB_clu_rep.fasta
+    diamond makedb --in DB_clu_rep.fasta -d virusdb
 
     """
 
@@ -51,7 +62,7 @@ process parse_ftp {
 
 process download_assemblies {
 
-    debug true
+    //debug true
 
     input:
     path y
@@ -98,8 +109,8 @@ process download_assemblies {
 
 process diamond {
 
-    maxForks 1
-    debug true
+    maxForks 4
+    //debug true
 
     input:
     path x
@@ -116,6 +127,7 @@ process diamond {
     -d $PWD/virusdb/virusdb.dmnd \
     -q $x \
     -o matches.dmnd.tsv \
+    -p $params.diamond_cpus \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
 
     """
@@ -140,7 +152,9 @@ process bedtools {
 }
 
 workflow {
-    build_diamond_db()
+    def db_ch = Channel.fromPath(params.query_file_aa)
+    build_db(db_ch)
     def ftp_ch = Channel.fromPath(params.ftp_file)
     parse_ftp(ftp_ch).flatten() | download_assemblies | diamond | bedtools
+
 }
