@@ -1,9 +1,11 @@
 #!/home/user/nextflow
 
 // Syntax version
+
 nextflow.enable.dsl=2
 
 // Script parameters
+
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
 params.mmseqs_minseqid = "0.95"
@@ -11,6 +13,8 @@ params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
 params.diamond_matrix = "BLOSUM62"
 params.diamond_cpus = "12"
+
+// Define workflow processes
 
 process build_db {
 
@@ -56,7 +60,6 @@ process parse_ftp {
     done < $x
 
     """
-
 
 }
 
@@ -143,8 +146,8 @@ process bedtools {
 
     """
 
-    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' \
-    $x | sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' $x | \
+    sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
 
     """
 
@@ -166,7 +169,10 @@ process assembly_stats {
 
 }
 
+// Workflow definition
+
 workflow {
+
     // Build clustered diamond query database from user supplied protein fasta
         def db_ch = Channel.fromPath(params.query_file_aa)
         build_db(db_ch)
@@ -175,7 +181,8 @@ workflow {
         def ftp_ch = Channel.fromPath(params.ftp_file)
         fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
 
-    // Independent sub-workflows to run on the downloaded assembly files    
+    // Independent sub-workflows to run on the downloaded assembly files
         diamond (fetched_assembly_files) | bedtools
         assembly_stats (fetched_assembly_files)
+
 }
