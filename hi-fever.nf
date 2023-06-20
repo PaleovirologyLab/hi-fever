@@ -62,17 +62,17 @@ process parse_ftp {
 
 process download_assemblies {
 
-    //debug true
+    maxForks 8
 
     input:
-    path y
+    path x
 
     output:
     path "*genomic.fna.gz"
 
     """
 
-    max_downloads=5
+    max_attempts=5
 
     count=0
 
@@ -89,9 +89,9 @@ process download_assemblies {
         status=`md5sum -c \$assemblyFile.md5 2>/dev/null | sed 's/.* //'`
         if [ "\$status" == FAILED ]
         then
-                        if [ "\$count" == "\$max_downloads" ]
+                        if [ "\$count" == "\$max_attempts" ]
                         then
-                                echo "\$assemblyFile FAILED md5check \$max_downloads times, exiting"; exit 1
+                                echo "\$assemblyFile FAILED md5check \$max_attempts times, exiting"; exit 1
                         else
                                 echo "\$assemblyFile FAILED md5check"; rm \$assemblyFile*; count=\$count +1; md5check_function
                         fi
@@ -102,7 +102,7 @@ process download_assemblies {
 
     md5check_function
 
-    done < $y
+    done < $x
 
     """
 }
@@ -110,7 +110,6 @@ process download_assemblies {
 process diamond {
 
     maxForks 4
-    //debug true
 
     input:
     path x
@@ -151,10 +150,32 @@ process bedtools {
 
 }
 
-workflow {
-    def db_ch = Channel.fromPath(params.query_file_aa)
-    build_db(db_ch)
-    def ftp_ch = Channel.fromPath(params.ftp_file)
-    parse_ftp(ftp_ch).flatten() | download_assemblies | diamond | bedtools
+process assembly_stats {
 
+    input:
+    path x
+
+    output:
+    path "assembly_stats.txt"
+
+    """
+
+    stats.sh in=$x format=3 addname= | grep -v n_scaffolds | sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > assembly_stats.txt
+
+    """
+
+}
+
+workflow {
+    // Build clustered diamond query database from user supplied protein fasta
+        def db_ch = Channel.fromPath(params.query_file_aa)
+        build_db(db_ch)
+
+    // Unpack user supplied ftp list and begin downloading assemblies
+        def ftp_ch = Channel.fromPath(params.ftp_file)
+        fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
+
+    // Independent sub-workflows to run on the downloaded assembly files    
+        diamond (fetched_assembly_files) | bedtools
+        assembly_stats (fetched_assembly_files)
 }
