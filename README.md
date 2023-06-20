@@ -37,17 +37,26 @@ Custom ftp file name.
 Custom protein query file name.
 - `--query_file_aa $PWD/circoviridae.fa`
 
-Set [DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default is very-sensitive).
+Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
+
+- `--mmseqs_minseqid 0.70`
+
+Minimum percentage of cluster member sequence length that must overlap with the representative sequence (default: 0.90 = 90%).
+
+- `--mmseqs_cover 0.80`
+
+[DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default: very-sensitive).
 
 - `--diamond_mode ultra-sensitive`
 
-Set [DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#alignment-options) (default is BLOSUM62).
+[DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#alignment-options) (default: BLOSUM62).
 
 - `--diamond_matrix BLOSUM45`
+
+CPUs per DIAMOND fork (default: 12). By default DIAMOND will be "forked" to run four assemblies in parallel, and each task will be allocated this number of CPUs. To set, recommend dividing the available CPUs by four.
+
+- `--diamond_cpus 6`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
-
-
-
