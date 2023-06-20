@@ -1,4 +1,4 @@
-name: hi-fever
+name: hi-fever2
 channels:
   - bioconda
   - conda-forge
@@ -6,19 +6,22 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_kmp_llvm
+  - aria2=1.23.0=0
+  - bbmap=38.18=0
   - bedtools=2.31.0=hf5e1c6e_2
   - blast=2.5.0=hc0b0e79_3
   - boost=1.78.0=py37h48bf904_0
   - boost-cpp=1.78.0=h6582d0a_3
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.19.0=h5eee18b_0
-  - ca-certificates=2023.5.7=hbcca054_0
+  - ca-certificates=2023.05.30=h06a4308_0
   - coreutils=8.25=1
   - curl=7.88.1=h5eee18b_0
   - dbus=1.13.18=hb2f20db_0
   - diamond=2.1.7=h5b5514e_0
   - expat=2.4.9=h6a678d5_0
   - freetype=2.12.1=h4a9f257_0
+  - gawk=5.1.0=h7b6447c_0
   - glib=2.69.1=he621ea3_2
   - htslib=1.17=h6bc39ce_1
   - icu=72.1=hcb278e6_0
@@ -35,6 +38,7 @@ dependencies:
   - libgcc-ng=13.1.0=he5830b7_0
   - libgfortran-ng=13.1.0=h69a702a_0
   - libgfortran5=13.1.0=h15d22d2_0
+  - libidn2=2.3.4=h5eee18b_0
   - liblapack=3.9.0=17_linux64_openblas
   - libnghttp2=1.46.0=hce63b2e_0
   - libnsl=2.0.0=h7f98852_0
@@ -43,15 +47,19 @@ dependencies:
   - libsqlite=3.42.0=h2797004_0
   - libssh2=1.10.0=h8f2d780_0
   - libstdcxx-ng=13.1.0=hfd8a6a1_0
+  - libunistring=0.9.10=h27cfd23_0
   - libxcb=1.15=h7f8727e_0
+  - libxml2=2.9.9=hea5a465_1
   - libzlib=1.2.13=h166bdaf_4
   - llvm-openmp=16.0.5=h4dfa4b3_0
-  - conda-forge::ncurses
+  - mmseqs2=14.7e284=pl5321h6a68c12_2
+  - ncurses=6.4=hcb278e6_0
   - nextflow=23.04.1=h2a3209d_3
   - numpy=1.21.6=py37h976b520_0
   - openjdk=11.0.13=h87a67e3_0
-  - openssl=1.1.1u=hd590300_0
+  - openssl=1.1.1u=h7f8727e_0
   - pcre=8.45=h295c915_0
+  - perl=5.32.1=0_h5eee18b_perl5
   - pip=23.1.2=pyhd8ed1ab_0
   - python=3.7.12=hb7a2778_100_cpython
   - python_abi=3.7=3_cp37m
@@ -60,7 +68,9 @@ dependencies:
   - setuptools=67.7.2=pyhd8ed1ab_0
   - sqlite=3.42.0=h2c6b66d_0
   - tk=8.6.12=h27826a3_0
+  - wget=1.21.4=h91b91d3_1
   - wheel=0.40.0=pyhd8ed1ab_0
   - xz=5.2.6=h166bdaf_0
   - zlib=1.2.13=h166bdaf_4
   - zstd=1.5.2=h3eb15da_6
+prefix: /home/inkfish/programs/miniconda3/envs/hi-fever2
