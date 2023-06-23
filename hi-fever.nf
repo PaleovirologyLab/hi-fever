@@ -25,6 +25,7 @@ process build_db {
     path "DB_clu_rep.fasta"
     path "virusdb.dmnd"
     publishDir "virusdb"
+    val true, emit: go
 
     """
 
@@ -41,6 +42,7 @@ process build_db {
 process parse_ftp {
 
     input:
+    val ready
     path x
 
     output:
@@ -118,7 +120,8 @@ process diamond {
     path x
 
     output:
-    path "*.dmnd.tsv"
+    path "*.dmnd.tsv", emit: result_path
+    path "*.gz*nsq", emit: nsq_path
 
     """
 
@@ -132,22 +135,40 @@ process diamond {
     -p $params.diamond_cpus \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
 
+    assembly=$x
+
+    gunzip -c $x | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids
+
+    rm "\$(readlink -f $x)"
+
     """
 
 }
 
-process bedtools {
+process bedtools_extract {
 
     input:
     path x
+    path y
 
     output:
     path "*.nonredundant.bed"
+    path "*.fasta"
 
     """
 
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' $x | \
     sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
+
+    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed > batch.txt
+
+
+    dbpath=\$(echo $y | cut -d ' ' -f1)
+    dbpath=\$(readlink -f \$dbpath | sed 's/.nsq//g')
+    dbpath=\$(echo \$dbpath | sed 's/\\.[0-9][0-9]\$//g')
+
+
+    blastdbcmd -entry_batch batch.txt -db \$dbpath > result.fasta
 
     """
 
@@ -179,10 +200,10 @@ workflow {
 
     // Unpack user supplied ftp list and begin downloading assemblies
         def ftp_ch = Channel.fromPath(params.ftp_file)
-        fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
+        fetched_assembly_files = parse_ftp(build_db.out.go, ftp_ch).flatten() | download_assemblies
 
     // Independent sub-workflows to run on the downloaded assembly files
-        diamond (fetched_assembly_files) | bedtools
-        assembly_stats (fetched_assembly_files)
+        diamond(fetched_assembly_files) | bedtools_extract
+        assembly_stats(fetched_assembly_files)
 
 }
