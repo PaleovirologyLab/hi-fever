@@ -23,6 +23,7 @@ dependencies:
   - freetype=2.12.1=h4a9f257_0
   - gawk=5.1.0=h7b6447c_0
   - glib=2.69.1=he621ea3_2
+  - hmmer=3.3.2=hdbdd923_4
   - htslib=1.17=h6bc39ce_1
   - icu=72.1=hcb278e6_0
   - krb5=1.19.4=h568e23c_0
@@ -64,7 +65,6 @@ dependencies:
   - python=3.7.12=hb7a2778_100_cpython
   - python_abi=3.7=3_cp37m
   - readline=8.2=h8228510_1
-  - samtools=1.17=hd87286a_1
   - setuptools=67.7.2=pyhd8ed1ab_0
   - sqlite=3.42.0=h2c6b66d_0
   - tk=8.6.12=h27826a3_0
