@@ -8,7 +8,7 @@ nextflow.enable.dsl=2
 
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
-
+params.phmms = "$PWD/domains-v*.hmm"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -23,7 +23,7 @@ process build_db {
     path x
 
     output:
-    path "DB_clu_rep.fasta"
+    path "DB_clu_rep.fasta", emit: clust_ch
     path "virusdb.dmnd"
     publishDir "virusdb"
 
@@ -40,6 +40,27 @@ process build_db {
 
 }
 
+process hmmer {
+
+    input:
+    path x
+    path y
+
+//    output:
+//    path "query_domains.hmmer"
+
+    """
+
+
+    hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $x $y
+    # --cpu 10. Or parameter?
+
+    # POST PROCESSING
+    # raw_out.txt > query_domains.hmmer
+
+    """
+
+}
 
 process parse_ftp {
 
@@ -208,6 +229,10 @@ workflow {
     // Build clustered diamond query database from user supplied protein fasta
         def db_ch = Channel.fromPath(params.query_file_aa)
         build_db(db_ch)
+    
+    // HMMER run on clustered queries
+        def profiles_ch = Channel.fromPath(params.phmms)
+        hmmer (profiles_ch, build_db.out.clust_ch)
 
     // Unpack user supplied ftp list and begin downloading assemblies
         def ftp_ch = Channel.fromPath(params.ftp_file)
