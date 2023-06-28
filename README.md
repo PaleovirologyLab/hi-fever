@@ -20,22 +20,30 @@ conda list
 
 ## With presets
 
+By default the following three files must be in your working directory:
+
+>`protein_query.fasta`
+
+>`ftp_list.txt` [[more information]](#assembly-list)
+
+>`domains.vX.XX.hmm` [[more information]](#phmm-libraries)
+
 To run the workflow:
 
 `nextflow hi-fever.nf `
 
-By default the following two files must be in your working directory: 
->`protein_query.fasta` 
-
->`ftp_list.txt`
-
 ## Adjustable parameters
-Custom ftp file name.
-
-- `--ftp_file $PWD/file_name.txt`
 
 Custom protein query file name.
 - `--query_file_aa $PWD/circoviridae.fa`
+
+Custom ftp file name.
+
+- `--ftp_file $PWD/assemblies.txt`
+
+Custom pHMM library for query domain annotation.
+
+- `--phmms $PWD/profiles.hmm`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -60,3 +68,33 @@ CPUs per DIAMOND fork (default: 12). By default DIAMOND will be "forked" to run 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
+
+
+# Input files
+
+## Assembly list
+
+- A text file containing ftp links for assemblies to process, e.g.:
+
+```
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2                                                                                            https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/023/065/795/GCA_023065795.1_ASM2306579v1                                                                                       https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ESG2_1.0
+```
+
+- Links to assemblies available from NCBI are on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites, e.g. `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
+
+
+## pHMM library
+
+- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download).
+- To generate a custom library, the following Pfam example can be adapted:
+
+```
+conda activate hi-fever
+mkdir pfam; cd pfam
+wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
+gunzip Pfam-A.hmm.gz
+# Replace space characters in model description lines, as these are column delimiters in the output table.
+sed -i '/^DESC/ s/ /_/g; s/__/  /' Pfam-A.hmm
+hmmpress Pfam-A.hmm
+cd ..
+```
