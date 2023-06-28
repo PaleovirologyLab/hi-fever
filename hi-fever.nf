@@ -109,6 +109,22 @@ process download_assemblies {
     """
 }
 
+process assembly_stats {
+
+    input:
+    path x
+
+    output:
+    path "assembly_stats.txt"
+
+    """
+
+    stats.sh in=$x format=3 addname= | grep -v n_scaffolds | sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > assembly_stats.txt
+
+    """
+
+}
+
 process diamond {
 
     maxForks 4
@@ -123,6 +139,7 @@ process diamond {
     """
 
     db=$PWD/virusdb/virusdb.dmnd
+    assembly=$x
 
     idle_fn () {
         if test -f "\$db"
@@ -144,11 +161,11 @@ process diamond {
     -q $x \
     -o matches.dmnd.tsv \
     -p $params.diamond_cpus \
-    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
+    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
 
-    assembly=$x
+    gunzip -c $x | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
 
-    gunzip -c $x | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids
+    wait
 
     rm "\$(readlink -f $x)"
 
@@ -185,22 +202,6 @@ process bedtools_extract {
 
 }
 
-process assembly_stats {
-
-    input:
-    path x
-
-    output:
-    path "assembly_stats.txt"
-
-    """
-
-    stats.sh in=$x format=3 addname= | grep -v n_scaffolds | sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > assembly_stats.txt
-
-    """
-
-}
-
 // Workflow definition
 
 workflow {
@@ -214,7 +215,7 @@ workflow {
         fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
 
     // Independent sub-workflows to run on the downloaded assembly files
-        diamond(fetched_assembly_files) | bedtools_extract
         assembly_stats(fetched_assembly_files)
+        diamond(fetched_assembly_files) | bedtools_extract
 
 }
