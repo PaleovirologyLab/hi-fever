@@ -85,7 +85,8 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2
 
 ## pHMM library
 
-- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download).
+- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download). Simply download and unpack it using:
+- `tar -xzf domains.v*.*.hmm.tar.gz`
 - To generate a custom library, the following Pfam example can be adapted:
 
 ```
