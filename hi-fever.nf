@@ -8,7 +8,7 @@ nextflow.enable.dsl=2
 
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
-params.phmms = "$PWD/profiles.hmm"
+params.phmms = "$PWD/domains-v*.hmm"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -42,16 +42,20 @@ process build_db {
 
 process hmmer {
 
+//    debug = true
+
     input:
     path x
     path y
 
-    output:
-    path "query_domains.hmmer"
+//    output:
+//    path "query_domains.hmmer"
 
     """
+    echo \$(ls -l $x)
+    echo \$(ls -l $y)
 
-    hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $x $y
+    #hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $x $y
     # --cpu 10. Or parameter?
 
     # POST PROCESSING
