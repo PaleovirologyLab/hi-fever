@@ -25,7 +25,6 @@ process build_db {
     path "DB_clu_rep.fasta"
     path "virusdb.dmnd"
     publishDir "virusdb"
-    val true, emit: go
 
     """
 
@@ -42,12 +41,10 @@ process build_db {
 process parse_ftp {
 
     input:
-    val ready
     path x
 
     output:
     path "*.ftp.txt"
-    
 
     """
 
@@ -57,7 +54,6 @@ process parse_ftp {
     assembly_ID=`echo \$line | sed 's/^.*\\///'`
 
     echo \$line > \${assembly_ID}.ftp.txt
-
 
     done < $x
 
@@ -120,16 +116,30 @@ process diamond {
     path x
 
     output:
-    path "*.dmnd.tsv", emit: result_path
-    path "*.gz*nsq", emit: nsq_path
+    path "*.dmnd.tsv"
+    path "*.gz*nsq"
 
     """
+
+    db=$PWD/virusdb/virusdb.dmnd
+
+    idle_fn () {
+        if test -f "\$db"
+            then
+                return
+            else
+                sleep 0.5
+                idle_fn
+        fi
+    }
+
+    idle_fn
 
     diamond blastx \
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
-    -d $PWD/virusdb/virusdb.dmnd \
+    -d \$db \
     -q $x \
     -o matches.dmnd.tsv \
     -p $params.diamond_cpus \
@@ -200,7 +210,7 @@ workflow {
 
     // Unpack user supplied ftp list and begin downloading assemblies
         def ftp_ch = Channel.fromPath(params.ftp_file)
-        fetched_assembly_files = parse_ftp(build_db.out.go, ftp_ch).flatten() | download_assemblies
+        fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
 
     // Independent sub-workflows to run on the downloaded assembly files
         diamond(fetched_assembly_files) | bedtools_extract
