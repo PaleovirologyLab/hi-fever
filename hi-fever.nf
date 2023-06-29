@@ -8,7 +8,7 @@ nextflow.enable.dsl=2
 
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
-params.phmms = "$PWD/domains-v*.hmm"
+params.phmms = "$PWD/domains-v*/*.hmm"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -50,7 +50,6 @@ process hmmer {
 //    path "query_domains.hmmer"
 
     """
-
 
     hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $x $y
     # --cpu 10. Or parameter?
@@ -226,10 +225,10 @@ process bedtools_extract {
 
 workflow {
 
-    // Build clustered diamond query database from user supplied protein fasta
+    // Build clustered DIAMOND query database from user supplied protein fasta
         def db_ch = Channel.fromPath(params.query_file_aa)
         build_db(db_ch)
-    
+
     // HMMER run on clustered queries
         def profiles_ch = Channel.fromPath(params.phmms)
         hmmer (profiles_ch, build_db.out.clust_ch)
