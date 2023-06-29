@@ -8,7 +8,7 @@ nextflow.enable.dsl=2
 
 params.ftp_file = "$PWD/ftp_list.txt"
 params.query_file_aa = "$PWD/protein_query.fasta"
-params.phmms = "$PWD/domains-v*/*.hmm"
+params.phmms = "$PWD/domains-v*"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -44,14 +44,13 @@ process hmmer {
 
     input:
     path x
-    path y
 
 //    output:
 //    path "query_domains.hmmer"
 
     """
 
-    hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $x $y
+    hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $params.phmms/*.hmm $x 1> /dev/null
     # --cpu 10. Or parameter?
 
     # POST PROCESSING
@@ -230,8 +229,7 @@ workflow {
         build_db(db_ch)
 
     // HMMER run on clustered queries
-        def profiles_ch = Channel.fromPath(params.phmms)
-        hmmer (profiles_ch, build_db.out.clust_ch)
+        hmmer (build_db.out.clust_ch)
 
     // Unpack user supplied ftp list and begin downloading assemblies
         def ftp_ch = Channel.fromPath(params.ftp_file)
