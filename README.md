@@ -26,7 +26,7 @@ By default the following must be in your working directory:
 
 >`ftp_list.txt` [[more information]](#assembly-list)
 
->`domains-vX.XX` directory [[more information]](#phmm-library)
+>`domains-vX.XX` pHMM directory [[more information]](#phmm-library)
 
 To run the workflow:
 
@@ -41,9 +41,9 @@ Custom ftp file name.
 
 - `--ftp_file $PWD/assemblies.txt`
 
-Custom pHMM library for query domain annotation.
+Location of custom pHMM library for query domain annotation.
 
-- `--phmms $PWD/Pfam*/*.hmm`
+- `--phmms $PWD/Pfam`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -89,11 +89,11 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 - A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download). Simply download and unpack it in the hi-fever working directory using:
 - `tar -xzf domains-v*.tar.gz`
-- To generate a custom library, this example with Pfam may be adapted:
+- To generate a custom library this example with Pfam may be adapted:
 
 ```
 conda activate hi-fever
-mkdir pfam; cd pfam
+mkdir Pfam; cd Pfam
 wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
 gunzip Pfam-A.hmm.gz
 # Replace space characters in model description lines, as these are column delimiters in the output table.
