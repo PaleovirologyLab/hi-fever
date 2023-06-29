@@ -25,6 +25,7 @@ process build_db {
     publishDir "virusdb"
 
     """
+
     mmseqs createdb $params.query_file_aa DB
     mmseqs cluster --min-seq-id $params.mmseqs_minseqid --cov-mode 1 -c $params.mmseqs_cover DB DB_clu tmp
     mmseqs createsubdb DB_clu DB DB_clu_rep
@@ -41,16 +42,32 @@ process hmmer {
     input:
     path x
 
-//    output:
-//    path "query_domains.hmmer"
+    output:
+    path "query_domains.hmmer"
+    publishDir "query_domains"
 
     """
 
-    hmmscan --noali --notextw --qformat fasta --domtblout raw_out.txt $params.phmms/*.hmm $x 1> /dev/null
-    # --cpu 10. Or parameter?
+    hmmscan --cpu 2 --noali --notextw --qformat fasta --domtblout raw_domains.txt $params.phmms/*.hmm $x 1> /dev/null
 
-    # POST PROCESSING
-    # raw_out.txt > query_domains.hmmer
+    # Post-processing:
+    # Merge overlapping query protein alignments, keep best (by bitscore)
+    # For each best alignment, if e-value is under 0.1, report:
+    # query overlap_start overlap_end best_start best_end best_bitscore best_i-Evalue model_acc model_name model_description
+
+    grep -v "#" raw_domains.txt | \
+    tr -s ' ' '\t' | \
+    awk 'BEGIN{OFS="\t"}; {print \$4, \$18, \$19, \$13, \$14, \$2, \$1, \$23}' | \
+    sort -k1,1 -k2,2n | \
+    tee >(bedtools merge > tmp.out) | \
+    bedtools cluster | \
+    sort -k9,9n -k5,5nr | \
+    sort -u -k9,9n | \
+    bedtools intersect -a - -b tmp.out -wb | \
+    awk 'BEGIN{OFS="\t"}; {if (\$4 < 0.1) print \$1, \$11, \$12, \$2, \$3, \$5, \$4, \$6, \$7, \$8}' \
+    > query_domains.hmmer
+
+    rm tmp.out
 
     """
 
@@ -147,7 +164,7 @@ process diamond {
     path x
 
     output:
-    path "*.dmnd.tsv"
+    path "*.dmnd.tsv", emit: tsv_ch
     path "*.gz*nsq"
 
     """
@@ -213,6 +230,35 @@ process bedtools_extract {
 
 }
 
+process intersect_domains {
+
+    input:
+    path x
+
+ //   output:
+
+    """
+
+    domain_annotation=$PWD/query_domains/query_domains.hmmer
+
+    idle_fn () {
+        if test -f "\$domain_annotation"
+            then
+                return
+            else
+                sleep 0.5
+                idle_fn
+        fi
+    }
+
+    idle_fn
+
+    echo "process $x"
+
+    """
+
+}
+
 // Workflow definition
 
 workflow {
@@ -229,5 +275,6 @@ workflow {
     // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
         diamond(fetched_assembly_files) | bedtools_extract
+        intersect_domains(diamond.out.tsv_ch)
 
 }
