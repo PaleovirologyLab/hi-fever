@@ -1,5 +1,5 @@
 # hi-fever 
-> **Hi**gh-throughput next**f**low **EVE** **r**ecovery workflow
+> **Hi**gh-throughput next**f**low **EVE** **r**ecovery
 
 
 # About
@@ -20,19 +20,19 @@ conda list
 
 ## With presets
 
-By default the following three files must be in your working directory:
+By default the following must be in your working directory:
 
 >`protein_query.fasta`
 
 >`ftp_list.txt` [[more information]](#assembly-list)
 
->`domains.vX.XX.hmm` [[more information]](#phmm-libraries)
+>`domains-vX.XX` directory [[more information]](#phmm-library)
 
 To run the workflow:
 
 `nextflow hi-fever.nf `
 
-## Adjustable parameters
+## Adjustable parameters with example inputs
 
 Custom protein query file name.
 - `--query_file_aa $PWD/circoviridae.fa`
@@ -43,7 +43,7 @@ Custom ftp file name.
 
 Custom pHMM library for query domain annotation.
 
-- `--phmms $PWD/profiles.hmm`
+- `--phmms $PWD/Pfam*/*.hmm`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -77,7 +77,9 @@ Create Nextflow html workflow report (includes run time, user information, task 
 - A text file containing ftp links for assemblies to process, e.g.:
 
 ```
-https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2                                                                                            https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/023/065/795/GCA_023065795.1_ASM2306579v1                                                                                       https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ESG2_1.0
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/023/065/795/GCA_023065795.1_ASM2306579v1
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ESG2_1.0
 ```
 
 - Links to assemblies available from NCBI are on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites, e.g. `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
@@ -85,9 +87,9 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2
 
 ## pHMM library
 
-- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download). Simply download and unpack it using:
-- `tar -xzf domains.v*.*.hmm.tar.gz`
-- To generate a custom library, the following Pfam example can be adapted:
+- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download). Simply download and unpack it in the hi-fever working directory using:
+- `tar -xzf domains-v*.tar.gz`
+- To generate a custom library, this example with Pfam may be adapted:
 
 ```
 conda activate hi-fever
