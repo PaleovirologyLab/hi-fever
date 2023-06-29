@@ -19,17 +19,13 @@ params.diamond_cpus = "12"
 
 process build_db {
 
-    input:
-    path x
-
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
     path "virusdb.dmnd"
     publishDir "virusdb"
 
     """
-
-    mmseqs createdb $x DB
+    mmseqs createdb $params.query_file_aa DB
     mmseqs cluster --min-seq-id $params.mmseqs_minseqid --cov-mode 1 -c $params.mmseqs_cover DB DB_clu tmp
     mmseqs createsubdb DB_clu DB DB_clu_rep
     mmseqs convert2fasta DB_clu_rep DB_clu_rep.fasta
@@ -62,9 +58,6 @@ process hmmer {
 
 process parse_ftp {
 
-    input:
-    path x
-
     output:
     path "*.ftp.txt"
 
@@ -77,7 +70,7 @@ process parse_ftp {
 
     echo \$line > \${assembly_ID}.ftp.txt
 
-    done < $x
+    done < $params.ftp_file
 
     """
 
@@ -225,17 +218,15 @@ process bedtools_extract {
 workflow {
 
     // Build clustered DIAMOND query database from user supplied protein fasta
-        def db_ch = Channel.fromPath(params.query_file_aa)
-        build_db(db_ch)
+        build_db()
 
     // HMMER run on clustered queries
         hmmer (build_db.out.clust_ch)
 
     // Unpack user supplied ftp list and begin downloading assemblies
-        def ftp_ch = Channel.fromPath(params.ftp_file)
-        fetched_assembly_files = parse_ftp(ftp_ch).flatten() | download_assemblies
+        fetched_assembly_files = parse_ftp() | flatten | download_assemblies
 
-    // Independent sub-workflows to run on the downloaded assembly files
+    // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
         diamond(fetched_assembly_files) | bedtools_extract
 
