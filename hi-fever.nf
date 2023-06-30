@@ -63,7 +63,7 @@ process hmmer {
     bedtools cluster | \
     sort -k9,9n -k5,5nr | \
     sort -u -k9,9n | \
-    bedtools intersect -a - -b tmp.out -wb | \
+    bedtools intersect -a - -b tmp.out -wb -sorted | \
     awk 'BEGIN{OFS="\t"}; {if (\$4 < 0.1) print \$1, \$11, \$12, \$2, \$3, \$5, \$4, \$6, \$7, \$8}' \
     > query_domains.hmmer
 
@@ -81,13 +81,10 @@ process parse_ftp {
     """
 
     while read line
-    do
-
-    assembly_ID=`echo \$line | sed 's/^.*\\///'`
-
-    echo \$line > \${assembly_ID}.ftp.txt
-
-    done < $params.ftp_file
+        do
+            assembly_ID=`echo \$line | sed 's/^.*\\///'`
+            echo \$line > \${assembly_ID}.ftp.txt
+        done < $params.ftp_file
 
     """
 
@@ -204,7 +201,7 @@ process diamond {
 
 }
 
-process bedtools_extract {
+process merge_and_extract {
 
     input:
     path x
@@ -235,8 +232,6 @@ process intersect_domains {
     input:
     path x
 
- //   output:
-
     """
 
     domain_annotation=$PWD/query_domains/query_domains.hmmer
@@ -253,7 +248,19 @@ process intersect_domains {
 
     idle_fn
 
-    echo "process $x"
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $x | \
+    sort -k1,1 -k2,2n | \
+    tee >(bedtools merge > tmp.out) | \
+    bedtools cluster | \
+    sort -k16,16n -k11,11nr | \
+    sort -u -k16,16n | \
+    bedtools intersect -a - -b tmp.out -loj -sorted | \
+    awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
+    sort -k1,1 -k2,2n | \
+    bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
+    cut -f18 --complement > matches.dmnd.annot.tsv
+
+    rm tmp.out
 
     """
 
@@ -274,7 +281,7 @@ workflow {
 
     // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond(fetched_assembly_files) | bedtools_extract
+        diamond(fetched_assembly_files) | merge_and_extract
         intersect_domains(diamond.out.tsv_ch)
 
 }
