@@ -6,9 +6,9 @@ nextflow.enable.dsl=2
 
 // Script parameters
 
-params.ftp_file = "$PWD/ftp_list.txt"
-params.query_file_aa = "$PWD/protein_query.fasta"
-params.phmms = "$PWD/domains-v*"
+params.ftp_file = "ftp_list.txt"
+params.query_file_aa = "protein_query.fasta"
+params.phmms = "domains-v*"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -19,6 +19,9 @@ params.diamond_cpus = "12"
 
 process build_db {
 
+    input:
+    path x
+
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
     path "virusdb.dmnd"
@@ -26,7 +29,7 @@ process build_db {
 
     """
 
-    mmseqs createdb $params.query_file_aa DB
+    mmseqs createdb $x DB
     mmseqs cluster --min-seq-id $params.mmseqs_minseqid --cov-mode 1 -c $params.mmseqs_cover DB DB_clu tmp
     mmseqs createsubdb DB_clu DB DB_clu_rep
     mmseqs convert2fasta DB_clu_rep DB_clu_rep.fasta
@@ -41,6 +44,7 @@ process hmmer {
 
     input:
     path x
+    path y
 
     output:
     path "query_domains.hmmer"
@@ -48,7 +52,7 @@ process hmmer {
 
     """
 
-    hmmscan --cpu 2 --noali --notextw --qformat fasta --domtblout raw_domains.txt $params.phmms/*.hmm $x 1> /dev/null
+    hmmscan --cpu 2 --noali --notextw --qformat fasta --domtblout raw_domains.txt $x/*.hmm $y 1> /dev/null
 
     # Post-processing:
     # Merge overlapping query protein alignments, keep best (by bitscore)
@@ -75,6 +79,9 @@ process hmmer {
 
 process parse_ftp {
 
+    input:
+    path x
+
     output:
     path "*.ftp.txt"
 
@@ -84,7 +91,7 @@ process parse_ftp {
         do
             assembly_ID=`echo \$line | sed 's/^.*\\///'`
             echo \$line > \${assembly_ID}.ftp.txt
-        done < $params.ftp_file
+        done < $x
 
     """
 
@@ -271,13 +278,16 @@ process intersect_domains {
 workflow {
 
     // Build clustered DIAMOND query database from user supplied protein fasta
-        build_db()
+        def db_ch = Channel.fromPath(params.query_file_aa)
+        build_db(db_ch)
 
     // HMMER run on clustered queries
-        hmmer (build_db.out.clust_ch)
+        def profiles_ch = Channel.fromPath(params.phmms)
+        hmmer (profiles_ch, build_db.out.clust_ch)
 
     // Unpack user supplied ftp list and begin downloading assemblies
-        fetched_assembly_files = parse_ftp() | flatten | download_assemblies
+        def ftp_ch = Channel.fromPath(params.ftp_file)
+        fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
     // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
