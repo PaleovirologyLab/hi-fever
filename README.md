@@ -35,15 +35,15 @@ To run the workflow:
 ## Adjustable parameters with example inputs
 
 Custom protein query file name.
-- `--query_file_aa $PWD/circoviridae.fa`
+- `--query_file_aa circoviridae.fa`
 
 Custom ftp file name.
 
-- `--ftp_file $PWD/assemblies.txt`
+- `--ftp_file assemblies.txt`
 
 Location of custom pHMM library for query domain annotation.
 
-- `--phmms $PWD/Pfam`
+- `--phmms Pfam`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
