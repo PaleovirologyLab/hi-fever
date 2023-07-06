@@ -193,16 +193,16 @@ process diamond {
     --matrix $params.diamond_matrix \
     --masking seg \
     -d \$db \
-    -q $x \
+    -q \$assembly \
     -o matches.dmnd.tsv \
     -p $params.diamond_cpus \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
 
-    gunzip -c $x | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
+    gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
 
     wait
 
-    rm "\$(readlink -f $x)"
+    rm "\$(readlink -f \$assembly)"
 
     """
 
