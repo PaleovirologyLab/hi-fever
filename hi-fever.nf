@@ -255,6 +255,16 @@ process intersect_domains {
 
     idle_fn
 
+    # Intersect process:
+    # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
+    # Calculates maximal strictly overlapping coordinate ranges and stores in temp file.
+    # Adds a column to main tsv denoting which coordinates are in mergable overlapping clusters
+    # Sorts best bitscore alignment per cluster to the top and removes others
+    # Intersects this with the maximal range temp file
+    # Converts to a subject oriented bed (i.e., protein hit and coordinates).
+    # Intersects with domain coordinate annotation file, reports:
+    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue model_acc model_name model_description
+
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $x | \
     sort -k1,1 -k2,2n | \
     tee >(bedtools merge > tmp.out) | \
