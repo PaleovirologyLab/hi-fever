@@ -288,8 +288,8 @@ process intersect_domains {
 workflow {
 
     // Build clustered DIAMOND query database from user supplied protein fasta
-        def db_ch = Channel.fromPath(params.query_file_aa)
-        build_db(db_ch)
+        def query_ch = Channel.fromPath(params.query_file_aa)
+        build_db(query_ch)
 
     // HMMER run on clustered queries
         def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
