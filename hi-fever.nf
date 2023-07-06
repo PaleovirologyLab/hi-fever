@@ -168,7 +168,7 @@ process diamond {
     path x
 
     output:
-    path "*.dmnd.tsv", emit: tsv_ch
+    path "*.dmnd.tsv"
     path "*.gz*nsq"
 
     """
@@ -208,38 +208,15 @@ process diamond {
 
 }
 
-process merge_and_extract {
+process intersect_domains_merge_extract {
 
     input:
     path x
     path y
 
-    output:
-    path "*.nonredundant.bed"
-    path "*.fasta"
-
     """
 
-    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$1, \$2, \$3; else if(\$3<\$2) print \$1, \$3, \$2}' $x | \
-    sort -k1,1 -k2,2n | bedtools merge -c 1 -o count > diamond-result.nonredundant.bed
-
-    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed > batch.txt
-
-    dbpath=\$(echo $y | cut -d ' ' -f1)
-    dbpath=\$(readlink -f \$dbpath | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
-
-    blastdbcmd -entry_batch batch.txt -db \$dbpath > result.fasta
-
-    """
-
-}
-
-process intersect_domains {
-
-    input:
-    path x
-
-    """
+    # Wait for domain annotation file
 
     domain_annotation=$PWD/query_domains/query_domains.hmmer
 
@@ -255,7 +232,7 @@ process intersect_domains {
 
     idle_fn
 
-    # Intersect process:
+    # Intersect domains & produce nonredundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
     # Calculates maximal strictly overlapping coordinate ranges and stores in temp file.
     # Adds a column to main tsv denoting which coordinates are in mergable overlapping clusters
@@ -263,21 +240,27 @@ process intersect_domains {
     # Intersects this with the maximal range temp file
     # Converts to a subject oriented bed (i.e., protein hit and coordinates).
     # Intersects with domain coordinate annotation file, reports:
-    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue model_acc model_name model_description
+    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen \
+    # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue \
+    # model_acc model_name model_description
 
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $x | \
     sort -k1,1 -k2,2n | \
-    tee >(bedtools merge > tmp.out) | \
+    tee >(bedtools merge > diamond-result.nonredundant.bed) | \
     bedtools cluster | \
     sort -k16,16n -k11,11nr | \
     sort -u -k16,16n | \
-    bedtools intersect -a - -b tmp.out -loj -sorted | \
+    bedtools intersect -a - -b diamond-result.nonredundant.bed -loj -sorted | \
     awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
     sort -k1,1 -k2,2n | \
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
     cut -f18 --complement > matches.dmnd.annot.tsv
 
-    rm tmp.out
+    # Prepare coords file and variable for blastdbcmd, then run it
+
+    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed > batch.txt
+    dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
+    blastdbcmd -entry_batch batch.txt -db \$dbpath > result.fasta
 
     """
 
@@ -301,7 +284,6 @@ workflow {
 
     // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond(fetched_assembly_files) | merge_and_extract
-        intersect_domains(diamond.out.tsv_ch)
+        diamond(fetched_assembly_files) | intersect_domains_merge_extract
 
 }
