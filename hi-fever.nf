@@ -282,7 +282,7 @@ workflow {
         build_db(db_ch)
 
     // HMMER run on clustered queries
-        def profiles_ch = Channel.fromPath(params.phmms)
+        def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
         hmmer (profiles_ch, build_db.out.clust_ch)
 
     // Unpack user supplied ftp list and begin downloading assemblies
