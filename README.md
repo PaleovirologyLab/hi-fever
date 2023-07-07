@@ -65,6 +65,14 @@ CPUs per DIAMOND fork (default: 12). By default DIAMOND will be "forked" to run 
 
 - `--diamond_cpus 6`
 
+Maximum interval length allowed between features in the context FASTA (default: 1000).
+
+- `--interval 500`
+
+Maximum length of (available) flanking sequence to add upstream and downstream of detected features in the context FASTA (default: 3000).
+
+- `--flank 500`
+
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
