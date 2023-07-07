@@ -14,6 +14,8 @@ params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
 params.diamond_matrix = "BLOSUM62"
 params.diamond_cpus = "12"
+params.interval = "1000"
+params.flank = "3000"
 
 // Define workflow processes
 
@@ -256,11 +258,20 @@ process intersect_domains_merge_extract {
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
     cut -f18 --complement > matches.dmnd.annot.tsv
 
-    # Prepare coords file and variable for blastdbcmd, then run it
+    # Prepare db variable for blastdbcmd
 
-    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed > batch.txt
     dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
-    blastdbcmd -entry_batch batch.txt -db \$dbpath > result.fasta
+
+    # First coordinate range extraction (strictly overlapping alignments)
+
+    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed | \
+    blastdbcmd -entry_batch - -db \$dbpath > strict.fasta
+
+    # Second coordinate range extraction (allow interval and add flanks)
+
+    bedtools merge -d $params.interval -i diamond-result.nonredundant.bed | \
+    awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
+    blastdbcmd -entry_batch - -db \$dbpath > context.fasta
 
     """
 
