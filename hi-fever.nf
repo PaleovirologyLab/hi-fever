@@ -16,6 +16,7 @@ params.diamond_matrix = "BLOSUM62"
 params.diamond_cpus = "12"
 params.interval = "1000"
 params.flank = "3000"
+params.reciprocal_db = "$PWD/nr_clustered.dmnd"
 
 // Define workflow processes
 
@@ -216,6 +217,9 @@ process intersect_domains_merge_extract {
     path x
     path y
 
+    output:
+    path "*_strict.fasta"
+
     """
 
     # Wait for domain annotation file
@@ -262,16 +266,46 @@ process intersect_domains_merge_extract {
 
     dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
 
+    filename=\$(echo \$dbpath | sed 's/\\.gz//g' | sed 's/\\/.*\\///g')
+
     # First coordinate range extraction (strictly overlapping alignments)
 
     awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed | \
-    blastdbcmd -entry_batch - -db \$dbpath > strict.fasta
+    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_strict.fasta"
 
     # Second coordinate range extraction (allow interval and add flanks)
 
     bedtools merge -d $params.interval -i diamond-result.nonredundant.bed | \
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
     blastdbcmd -entry_batch - -db \$dbpath > context.fasta
+
+    """
+
+}
+
+process reciprocal_diamond {
+
+    input:
+    path x
+
+    output:
+    path "*.dmnd.tsv"
+
+    """
+
+    cat $x > all_seqs.fasta
+
+    diamond blastx \
+    --$params.diamond_mode \
+    --matrix $params.diamond_matrix \
+    --masking seg \
+    -d $params.reciprocal_db \
+    -q all_seqs.fasta \
+    -o reciprocal-matches.dmnd.tsv \
+    -p 48 \
+    -e 1e-5 \
+    -k 20 \
+    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
 
     """
 
@@ -295,6 +329,6 @@ workflow {
 
     // Sub-workflows to run on the downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond(fetched_assembly_files) | intersect_domains_merge_extract
+        diamond(fetched_assembly_files) | intersect_domains_merge_extract | collect | reciprocal_diamond
 
 }
