@@ -119,6 +119,7 @@ cd ..
 - For the reciprocal DIAMOND BLASTx stage, a local nr or clustered nr DIAMOND formatted database is recommended.
 - A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:
 ```
+conda activate hi-fever
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
 diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered.dmnd --threads 8
 rm nr_rep_seq.fasta.gz
