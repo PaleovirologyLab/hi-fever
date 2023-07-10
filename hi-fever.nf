@@ -279,6 +279,8 @@ process intersect_domains_merge_extract {
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
     blastdbcmd -entry_batch - -db \$dbpath > context.fasta
 
+    rm \$dbpath*
+
     """
 
 }
