@@ -8,7 +8,7 @@ nextflow.enable.dsl=2
 
 params.ftp_file = "ftp_list.txt"
 params.query_file_aa = "protein_query.fasta"
-params.phmms = "domains-v*"
+params.phmms = "domains"
 params.mmseqs_minseqid = "0.95"
 params.mmseqs_cover = "0.90"
 params.diamond_mode = "very-sensitive"
@@ -55,7 +55,7 @@ process hmmer {
 
     """
 
-    hmmscan --cpu 2 --noali --notextw --qformat fasta --domtblout raw_domains.txt $x/*.hmm $y 1> /dev/null
+    hmmscan --cpu 4 --noali --notextw --qformat fasta --domtblout raw_domains.txt $x/*.hmm $y 1> /dev/null
 
     # Post-processing:
     # Merge overlapping query protein alignments, keep best (by bitscore)
