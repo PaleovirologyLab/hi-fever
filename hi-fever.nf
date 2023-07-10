@@ -304,7 +304,6 @@ process reciprocal_diamond {
     -d $params.reciprocal_db \
     -q all_seqs.fasta \
     -o reciprocal-matches.dmnd.tsv \
-    -p 48 \
     -e 1e-5 \
     -k 20 \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
