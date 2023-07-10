@@ -92,8 +92,8 @@ process parse_ftp {
 
     while read line
         do
-            assembly_ID=`echo \$line | sed 's/^.*\\///'`
-            echo \$line > \${assembly_ID}.ftp.txt
+            assemblyID=`echo \$line | sed 's/^.*\\///'`
+            echo \$line > \${assemblyID}.ftp.txt
         done < $x
 
     """
@@ -121,10 +121,8 @@ process download_assemblies {
 
     # Downloads and checks assembly file for corruption, re-attempts if md5 check fails
     md5check_function () {
-        assembly_ID=`echo \$line | sed 's/^.*\\///'`
-        wget -q \$line/\${assembly_ID}_genomic.fna.gz
-        wget -q \$line/md5checksums.txt
-        assemblyFile=`ls -1 *genomic.fna.gz`
+        assemblyFile="\$(echo "\$line" | sed 's/^.*\\///')_genomic.fna.gz"
+        wget -q "\$line/\$assemblyFile" "\$line/md5checksums.txt"
         grep \$assemblyFile md5checksums.txt > \$assemblyFile.md5; rm md5checksums.txt
         status=`md5sum -c \$assemblyFile.md5 2>/dev/null | sed 's/.* //'`
         if [ "\$status" == FAILED ]
@@ -266,7 +264,7 @@ process intersect_domains_merge_extract {
 
     dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
 
-    filename=\$(echo \$dbpath | sed 's/\\.gz//g' | sed 's/\\/.*\\///g')
+    filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
 
     # First coordinate range extraction (strictly overlapping alignments)
 
