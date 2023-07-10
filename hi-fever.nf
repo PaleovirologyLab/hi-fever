@@ -16,7 +16,7 @@ params.diamond_matrix = "BLOSUM62"
 params.diamond_cpus = "12"
 params.interval = "1000"
 params.flank = "3000"
-params.reciprocal_db = "$PWD/nr_clustered.dmnd"
+params.reciprocal_db = "nr_clustered.dmnd"
 
 // Define workflow processes
 
@@ -289,6 +289,7 @@ process reciprocal_diamond {
 
     input:
     path x
+    path y
 
     output:
     path "*.dmnd.tsv"
@@ -301,7 +302,7 @@ process reciprocal_diamond {
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
-    -d $params.reciprocal_db \
+    -d $y \
     -q all_seqs.fasta \
     -o reciprocal-matches.dmnd.tsv \
     -e 1e-5 \
@@ -328,8 +329,12 @@ workflow {
         def ftp_ch = Channel.fromPath(params.ftp_file)
         fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
-    // Sub-workflows to run on the downloaded assembly files
+    // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond(fetched_assembly_files) | intersect_domains_merge_extract | collect | reciprocal_diamond
+        detected_features = diamond(fetched_assembly_files) | intersect_domains_merge_extract | collect
+
+    // Reciprocal DIAMOND
+        def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
+        reciprocal_diamond (detected_features, reciprocal_db_ch)
 
 }
