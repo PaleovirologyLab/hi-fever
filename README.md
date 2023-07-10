@@ -28,22 +28,28 @@ By default the following must be in your working directory:
 
 >`domains-vX.XX` pHMM directory [[more information]](#phmm-library)
 
+>`nr_clustered.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
+
 To run the workflow:
 
 `nextflow hi-fever.nf `
 
 ## Adjustable parameters with example inputs
 
-Custom protein query file name.
+Custom protein query file (default: protein_query.fasta).
 - `--query_file_aa circoviridae.fa`
 
-Custom ftp file name.
+Custom ftp file (default: ftp_list.txt).
 
 - `--ftp_file assemblies.txt`
 
-Location of custom pHMM library for query domain annotation.
+Location of custom pHMM library for query domain annotation (default: domains-v*).
 
 - `--phmms Pfam`
+
+Custom reciprocal BLASTx database (DIAMOND formatted, default: nr_clustered.dmnd)
+
+- `--reciprocal_db nr.dmnd`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -108,4 +114,15 @@ gunzip Pfam-A.hmm.gz
 sed -i '/^DESC/ s/ /_/g; s/__/  /' Pfam-A.hmm
 hmmpress Pfam-A.hmm
 cd ..
+```
+
+## NCBI nr proteins db
+
+- For the reciprocal DIAMOND BLASTx stage, a local nr or clustered nr DIAMOND formatted database is recommended.
+- A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:
+```
+wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
+diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered.dmnd --threads 8
+rm nr_rep_seq.fasta.gz
+
 ```
