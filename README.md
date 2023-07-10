@@ -26,7 +26,7 @@ By default the following must be in your working directory:
 
 >`ftp_list.txt` [[more information]](#assembly-list)
 
->`domains-vX.XX` pHMM directory [[more information]](#phmm-library)
+>`domains` pHMM directory [[more information]](#phmm-library)
 
 >`nr_clustered.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
@@ -43,9 +43,9 @@ Custom ftp file (default: ftp_list.txt).
 
 - `--ftp_file assemblies.txt`
 
-Location of custom pHMM library for query domain annotation (default: domains-v*).
+Location of custom pHMM library for query domain annotation (default: domains).
 
-- `--phmms Pfam`
+- `--phmms Pfam-32`
 
 Custom reciprocal BLASTx database (DIAMOND formatted, default: nr_clustered.dmnd)
 
@@ -101,13 +101,11 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 ## pHMM library
 
-- A preformatted pHMM library including [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), [RVDB](https://rvdb.dbi.udel.edu), [PHROGs](https://phrogs.lmge.uca.fr), and [more](link_to_description) is [available here](link_to_download). Simply download and unpack it in the hi-fever working directory using:
-- `tar -xzf domains-v*.tar.gz`
-- To generate a custom library this example with Pfam may be adapted:
+- To generate a pHMM library with the latest version of [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), run the following:
 
 ```
 conda activate hi-fever
-mkdir Pfam; cd Pfam
+mkdir domains; cd domains
 wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
 gunzip Pfam-A.hmm.gz
 # Replace space characters in model description lines, as these are column delimiters in the output table.
@@ -124,5 +122,4 @@ cd ..
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
 diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered.dmnd --threads 8
 rm nr_rep_seq.fasta.gz
-
 ```
