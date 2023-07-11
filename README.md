@@ -47,7 +47,7 @@ Location of custom pHMM library for query domain annotation (default: domains).
 
 - `--phmms Pfam-32`
 
-Custom reciprocal BLASTx database (DIAMOND formatted, default: nr_clustered.dmnd)
+Custom reciprocal BLASTx database (DIAMOND formatted, default: nr_clustered.dmnd).
 
 - `--reciprocal_db nr.dmnd`
 
@@ -78,6 +78,10 @@ Maximum interval length allowed between features in the context FASTA (default: 
 Maximum length of (available) flanking sequence to add upstream and downstream of detected features in the context FASTA (default: 3000).
 
 - `--flank 500`
+
+Minimum length of extracted ORFs, in nucleotides (default: 150).
+
+- `--orf_size_nt 300`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
