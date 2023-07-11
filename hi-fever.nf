@@ -17,6 +17,7 @@ params.diamond_cpus = "12"
 params.interval = "1000"
 params.flank = "3000"
 params.reciprocal_db = "nr_clustered.dmnd"
+params.orf_size_nt = "150"
 
 // Define workflow processes
 
@@ -216,7 +217,8 @@ process intersect_domains_merge_extract {
     path y
 
     output:
-    path "*_strict.fasta"
+    path "*_strict.fasta", emit: strict_ch
+    path "*_context.fasta", emit: context_ch
 
     """
 
@@ -275,9 +277,35 @@ process intersect_domains_merge_extract {
 
     bedtools merge -d $params.interval -i diamond-result.nonredundant.bed | \
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
-    blastdbcmd -entry_batch - -db \$dbpath > context.fasta
+    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_context.fasta"
 
     rm \$dbpath*
+
+    """
+
+}
+
+process orf_extract {
+
+    input:
+    path x
+
+    """
+
+    # Extracts ORFs between START and STOP codons. STOP is NOT included in reported ORF coordinates.
+    # Converts ORF output to the original genomic loci in ascending BED format, with predicted protein sequence.
+
+    cat $x | \
+    sed 's/:/-/' | \
+    getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
+    seqtk seq - | \
+    sed 's/] .*//; s/_.*\\[/ /; s/>//; s/-/ /g' | \
+    tr -s ' ' '\t' | \
+    paste -sd '\t\n' | \
+    awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' \
+    > ORF_out_temp
+
+    # Intersect with original hits
 
     """
 
@@ -329,7 +357,11 @@ workflow {
 
     // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        detected_features = diamond(fetched_assembly_files) | intersect_domains_merge_extract | collect
+        diamond(fetched_assembly_files) | intersect_domains_merge_extract
+        detected_features = intersect_domains_merge_extract.out.strict_ch.collect()
+
+    // ORF extraction
+        orf_extract (intersect_domains_merge_extract.out.context_ch)
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
