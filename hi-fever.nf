@@ -292,18 +292,24 @@ process orf_extract {
 
     """
 
+    # Checks input file for content, if yes:
     # Extracts ORFs between START and STOP codons. STOP is NOT included in reported ORF coordinates.
     # Converts ORF output to the original genomic loci in ascending BED format, with predicted protein sequence.
 
-    cat $x | \
-    sed 's/:/-/' | \
-    getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
-    seqtk seq - | \
-    sed -r 's/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g' | \
-    tr -s ' ' '\t' | \
-    paste -sd '\t\n' | \
-    awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' \
-    > predicted_context_ORFs
+    if [ -s $x ];
+        then
+            cat $x | \
+            sed 's/:/-/' | \
+            getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
+            seqtk seq - | \
+            sed -r 's/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g' | \
+            tr -s ' ' '\t' | \
+            paste -sd '\t\n' | \
+            awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' \
+            > predicted_context_ORFs
+        else
+            touch predicted_context_ORFs
+    fi
 
     # Intersect with original hits
 
