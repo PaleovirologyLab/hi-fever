@@ -308,14 +308,17 @@ process orf_extract {
             paste -sd '\t\n' | \
             awk 'BEGIN{OFS="\t"}; {if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' | \
             sort -k1,1 -k2,2n \
-            > predicted_context_ORFs.txt
+            > context_ORFs.txt
         else
-            touch predicted_context_ORFs.txt
+            touch context_ORFs.txt
     fi
 
-    # Intersect with original hits
+    # Intersect ORFs with strictly overlapping features, reports:
+    # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
-    bedtools intersect $y
+    bedtools intersect -a $y -b context_ORFs.txt -wo -sorted | \
+    awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' \
+    > intersected_ORFs.txt
 
     """
 
