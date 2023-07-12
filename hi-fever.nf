@@ -219,6 +219,7 @@ process intersect_domains_merge_extract {
     output:
     path "*_strict.fasta", emit: strict_ch
     path "*_context.fasta", emit: context_ch
+    path "diamond-result.nonredundant.bed", emit: nr_bed_ch
 
     """
 
@@ -262,10 +263,9 @@ process intersect_domains_merge_extract {
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
     cut -f18 --complement > matches.dmnd.annot.tsv
 
-    # Prepare db variable for blastdbcmd
+    # Prepare variables
 
     dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
-
     filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
 
     # First coordinate range extraction (strictly overlapping alignments)
@@ -289,6 +289,7 @@ process orf_extract {
 
     input:
     path x
+    path y
 
     """
 
@@ -305,13 +306,16 @@ process orf_extract {
             sed -r 's/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g' | \
             tr -s ' ' '\t' | \
             paste -sd '\t\n' | \
-            awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' \
-            > predicted_context_ORFs
+            awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' | \
+            sort -k1,1 -k2,2n \
+            > predicted_context_ORFs.txt
         else
-            touch predicted_context_ORFs
+            touch predicted_context_ORFs.txt
     fi
 
     # Intersect with original hits
+
+    $y
 
     """
 
@@ -367,7 +371,7 @@ workflow {
         detected_features = intersect_domains_merge_extract.out.strict_ch.collect()
 
     // ORF extraction
-        orf_extract (intersect_domains_merge_extract.out.context_ch)
+        orf_extract (intersect_domains_merge_extract.out.context_ch, intersect_domains_merge_extract.out.nr_bed_ch)
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
