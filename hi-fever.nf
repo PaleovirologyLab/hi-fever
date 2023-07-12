@@ -299,11 +299,11 @@ process orf_extract {
     sed 's/:/-/' | \
     getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
     seqtk seq - | \
-    sed 's/] .*//; s/_.*\\[/ /; s/>//; s/-/ /g' | \
+    sed -r 's/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g' | \
     tr -s ' ' '\t' | \
     paste -sd '\t\n' | \
     awk '{if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' \
-    > ORF_out_temp
+    > predicted_context_ORFs
 
     # Intersect with original hits
 
