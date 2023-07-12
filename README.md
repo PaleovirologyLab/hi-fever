@@ -7,9 +7,16 @@
 
 # Installation
 
-A conda `environment.yml` file is provided in this repository for fast setup. [Get conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
+Clone the repo, e.g., with GitHub CLI:
 
-Create, activate, and check environment:
+```
+gh repo clone ACCOUNT/hi-fever
+```
+
+For installation of software dependencies, a conda `environment.yml` file is provided.
+[Get conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
+Create, activate, and check software environment:
+
 ```
 conda env create -f environment.yml
 conda activate hi-fever
