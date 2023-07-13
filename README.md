@@ -1,9 +1,8 @@
-# hi-fever 
+# hi-fever
+
 > **Hi**gh-throughput next**f**low **EVE** **r**ecovery
 
-
 # About
-
 
 # Installation
 
@@ -30,20 +29,18 @@ conda list
 By default the following must be in your working directory:
 
 >`protein_query.fasta`
-
 >`ftp_list.txt` [[more information]](#assembly-list)
-
 >`domains` pHMM directory [[more information]](#phmm-library)
-
 >`nr_clustered.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
 To run the workflow:
 
-`nextflow hi-fever.nf `
+`nextflow hi-fever.nf`
 
 ## Adjustable parameters with example inputs
 
 Custom protein query file (default: protein_query.fasta).
+
 - `--query_file_aa circoviridae.fa`
 
 Custom ftp file (default: ftp_list.txt).
@@ -94,7 +91,6 @@ Create Nextflow html workflow report (includes run time, user information, task 
 
 - `-with-report report.html`
 
-
 # Input files
 
 ## Assembly list
@@ -108,7 +104,6 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 ```
 
 - Links to assemblies available from NCBI are on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites, e.g. `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
-
 
 ## pHMM library
 
@@ -129,6 +124,7 @@ cd ..
 
 - For the reciprocal DIAMOND BLASTx stage, a local nr or clustered nr DIAMOND formatted database is recommended.
 - A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:
+
 ```
 conda activate hi-fever
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
