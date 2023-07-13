@@ -29,8 +29,11 @@ conda list
 By default the following must be in your working directory:
 
 >`protein_query.fasta`
+
 >`ftp_list.txt` [[more information]](#assembly-list)
+
 >`domains` pHMM directory [[more information]](#phmm-library)
+
 >`nr_clustered.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
 To run the workflow:
