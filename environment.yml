@@ -12,7 +12,7 @@ dependencies:
   - blast=2.14.0=pl5321h6f7f691_2
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.11.0=h470a237_1
-  - ca-certificates=2023.5.7=hbcca054_0
+  - ca-certificates=2023.7.22=hbcca054_0
   - coreutils=8.25=1
   - curl=7.71.1=he644dc0_3
   - diamond=2.1.8=h43eeafb_0
@@ -30,17 +30,22 @@ dependencies:
   - gawk=5.1.0=h7f98852_0
   - gettext=0.21.1=h27087fc_0
   - giflib=5.2.1=h0b41bf4_3
+  - glib=2.76.4=hfc55251_0
+  - glib-tools=2.76.4=hfc55251_0
   - hmmer=3.3.2=hdbdd923_4
   - icu=72.1=hcb278e6_0
   - krb5=1.17.2=h926e7f8_0
+  - ld_impl_linux-64=2.40=h41732ed_0
   - lerc=4.0.0=h27087fc_0
   - libcurl=7.71.1=hcdd3856_3
   - libdeflate=1.18=h0b41bf4_0
   - libedit=3.1.20191231=he28a2e2_2
   - libexpat=2.5.0=hcb278e6_1
+  - libffi=3.4.2=h7f98852_5
   - libgcc=7.2.0=h69d50b8_2
   - libgcc-ng=13.1.0=he5830b7_0
   - libgd=2.3.3=hfa28ad5_6
+  - libglib=2.76.4=hebfc3b9_0
   - libgomp=13.1.0=he5830b7_0
   - libiconv=1.17=h166bdaf_0
   - libidn2=2.3.4=h166bdaf_0
@@ -64,7 +69,8 @@ dependencies:
   - openjdk=11.0.1=h516909a_1016
   - openssl=1.1.1u=hd590300_0
   - pcre=8.45=h9c3ff4c_0
-  - perl=5.32.1=3_hd590300_perl5
+  - pcre2=10.40=hc3806b6_0
+  - perl=5.32.1=4_hd590300_perl5
   - perl-archive-tar=2.40=pl5321hdfd78af_0
   - perl-carp=1.38=pl5321hdfd78af_4
   - perl-common-sense=3.75=pl5321hdfd78af_0
@@ -84,12 +90,18 @@ dependencies:
   - perl-pathtools=3.75=pl5321hec16e2b_3
   - perl-scalar-list-utils=1.62=pl5321hec16e2b_1
   - perl-types-serialiser=1.01=pl5321hdfd78af_0
+  - pip=23.2.1=pyhd8ed1ab_0
+  - python=3.10.8=h257c98d_0_cpython
   - python_abi=3.10=3_cp310
   - readline=8.2=h8228510_1
   - seqtk=1.4=he4a0461_1
+  - setuptools=68.0.0=pyhd8ed1ab_0
   - sqlite=3.42.0=h2c6b66d_0
   - tk=8.6.12=h27826a3_0
+  - tzdata=2023c=h71feb2d_0
   - wget=1.20.3=ha56f1ee_1
+  - wheel=0.41.0=pyhd8ed1ab_0
+  - wise2=2.4.1=h08bb679_0
   - xz=5.2.6=h166bdaf_0
   - zlib=1.2.13=hd590300_5
   - zstd=1.5.2=hfc55251_7
