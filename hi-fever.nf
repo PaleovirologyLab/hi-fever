@@ -73,8 +73,8 @@ process hmmer {
     sort -k9,9n -k5,5nr | \
     sort -u -k9,9n | \
     bedtools intersect -a - -b tmp.out -wb -sorted | \
-    awk 'BEGIN{OFS="\t"}; {if (\$4 < 0.1) print \$1, \$11, \$12, \$2, \$3, \$5, \$4, \$6, \$7, \$8}' \
-    > query_domains.hmmer
+    awk 'BEGIN{OFS="\t"}; {if (\$4 < 0.1) print \$1, \$11, \$12, \$2, \$3, \$5, \$4, \$6, \$7, \$8}' > \
+    query_domains.hmmer
 
     rm tmp.out
 
@@ -157,7 +157,10 @@ process assembly_stats {
 
     """
 
-    stats.sh in=$x format=3 addname= | grep -v n_scaffolds | sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > assembly_stats.txt
+    stats.sh in=$x format=3 addname= | \
+    grep -v n_scaffolds | \
+    sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > \
+    assembly_stats.txt
 
     """
 
@@ -263,7 +266,8 @@ process intersect_domains_merge_extract {
     awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
     sort -k1,1 -k2,2n | \
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
-    cut -f18 --complement > matches.dmnd.annot.tsv
+    cut -f18 --complement > \
+    matches.dmnd.annot.tsv
 
     # Prepare variables
 
@@ -273,13 +277,15 @@ process intersect_domains_merge_extract {
     # First coordinate range extraction (strictly overlapping alignments)
 
     awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed | \
-    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_strict.fasta"
+    blastdbcmd -entry_batch - -db \$dbpath > \
+    "\${filename}_strict.fasta"
 
     # Second coordinate range extraction (allow interval and add flanks)
 
     bedtools merge -d $params.interval -i diamond-result.nonredundant.bed | \
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
-    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_context.fasta"
+    blastdbcmd -entry_batch - -db \$dbpath > \
+    "\${filename}_context.fasta"
 
     rm \$dbpath*
 
@@ -309,8 +315,8 @@ process orf_extract {
             tr -s ' ' '\t' | \
             paste -sd '\t\n' | \
             awk 'BEGIN{OFS="\t"}; {if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' | \
-            sort -k1,1 -k2,2n \
-            > context_ORFs.txt
+            sort -k1,1 -k2,2n > \
+            context_ORFs.txt
         else
             touch context_ORFs.txt
     fi
@@ -319,8 +325,8 @@ process orf_extract {
     # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
     bedtools intersect -a $y -b context_ORFs.txt -wo -sorted | \
-    awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' \
-    > intersected_ORFs.txt
+    awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
+    intersected_ORFs.txt
 
     """
 
@@ -339,8 +345,8 @@ process genewise {
     cut -f1 $annotated_tsv | \
     sort | \
     uniq | \
-    seqtk subseq \$protein_db - \
-    > best_query_pool.fa
+    seqtk subseq \$protein_db - > \
+    best_query_pool.fa
 
     WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
 
@@ -350,8 +356,8 @@ process genewise {
     awk '/^[0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
     sed 's/DIVIDE_STRING/\t/g' | \
     tr -s '\t' | \
-    tr -s ' ' '\t' \
-    > genewisedb_example
+    tr -s ' ' '\t' > \
+    genewisedb_example
 
     rm best_query_pool.fa
 
