@@ -18,6 +18,7 @@ params.interval = "1000"
 params.flank = "3000"
 params.reciprocal_db = "nr_clustered.dmnd"
 params.orf_size_nt = "150"
+params.genewise_matrix = "BLOSUM62"
 
 // Define workflow processes
 
@@ -220,6 +221,7 @@ process intersect_domains_merge_extract {
     path "*_strict.fasta", emit: strict_ch
     path "*_context.fasta", emit: context_ch
     path "diamond-result.nonredundant.bed", emit: nr_bed_ch
+    path "matches.dmnd.annot.tsv", emit: annot_tsv_ch
 
     """
 
@@ -324,6 +326,39 @@ process orf_extract {
 
 }
 
+process genewise {
+
+    input:
+    path annotated_tsv
+    path strict_align_regions
+
+    """
+
+    protein_db=$PWD/virusdb/DB_clu_rep.fasta
+
+    cut -f1 $annotated_tsv | \
+    sort | \
+    uniq | \
+    seqtk subseq \$protein_db - \
+    > best_query_pool.fa
+
+    WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
+
+    genewisedb -prodb best_query_pool.fa -dnadb $strict_align_regions -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+    sed '1,/#Alignments/d' | \
+    grep -v ">\\|Bits   Query\\|-----------" | \
+    awk '/^[0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
+    sed 's/DIVIDE_STRING/\t/g' | \
+    tr -s '\t' | \
+    tr -s ' ' '\t' \
+    > genewisedb_example
+
+    rm best_query_pool.fa
+
+    """
+
+}
+
 process reciprocal_diamond {
 
     input:
@@ -373,8 +408,11 @@ workflow {
         diamond(fetched_assembly_files) | intersect_domains_merge_extract
         detected_features = intersect_domains_merge_extract.out.strict_ch.collect()
 
-    // ORF extraction
+    // Extract ORFs that overlap DIAMOND hits (extending into flanks)
         orf_extract (intersect_domains_merge_extract.out.context_ch, intersect_domains_merge_extract.out.nr_bed_ch)
+
+    // Frameshift and STOP aware reconstruction of EVE sequences
+        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_ch)
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
