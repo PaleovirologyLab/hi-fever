@@ -356,7 +356,9 @@ process genewise {
     awk '/^[0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
     sed 's/DIVIDE_STRING/\t/g' | \
     tr -s '\t' | \
-    tr -s ' ' '\t' > \
+    tr -s ' ' '\t' | \
+    sort -k5,5 -k1,1nr | \
+    sort -u -k5,5 > \
     genewisedb_example
 
     rm best_query_pool.fa
