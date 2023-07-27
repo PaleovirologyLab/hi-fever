@@ -90,6 +90,10 @@ Minimum length of extracted ORFs, in nucleotides (default: 150).
 
 - `--orf_size_nt 300`
 
+Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, BLOSUM45, BLOSUM30.
+
+- `--genewise_matrix BLOSUM45`
+
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
