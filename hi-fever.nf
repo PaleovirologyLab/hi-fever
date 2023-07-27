@@ -25,7 +25,7 @@ params.genewise_matrix = "BLOSUM62"
 process build_db {
 
     input:
-    path x
+    path queries
 
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
@@ -34,7 +34,7 @@ process build_db {
 
     """
 
-    mmseqs createdb $x DB
+    mmseqs createdb $queries DB
     mmseqs cluster --min-seq-id $params.mmseqs_minseqid --cov-mode 1 -c $params.mmseqs_cover DB DB_clu tmp
     mmseqs createsubdb DB_clu DB DB_clu_rep
     mmseqs convert2fasta DB_clu_rep DB_clu_rep.fasta
@@ -48,8 +48,8 @@ process build_db {
 process hmmer {
 
     input:
-    path x
-    path y
+    path profile_dir
+    path clustered_fasta
 
     output:
     path "query_domains.hmmer"
@@ -57,7 +57,7 @@ process hmmer {
 
     """
 
-    hmmscan --cpu 4 --noali --notextw --qformat fasta --domtblout raw_domains.txt $x/*.hmm $y 1> /dev/null
+    hmmscan --cpu 4 --noali --notextw --qformat fasta --domtblout raw_domains.txt $profile_dir/*.hmm $clustered_fasta 1> /dev/null
 
     # Post-processing:
     # Merge overlapping query protein alignments, keep best (by bitscore)
@@ -85,7 +85,7 @@ process hmmer {
 process parse_ftp {
 
     input:
-    path x
+    path ftp_input
 
     output:
     path "*.ftp.txt"
@@ -96,7 +96,7 @@ process parse_ftp {
         do
             assemblyID=`echo \$line | sed 's/^.*\\///'`
             echo \$line > \${assemblyID}.ftp.txt
-        done < $x
+        done < $ftp_input
 
     """
 
@@ -107,7 +107,7 @@ process download_assemblies {
     maxForks 8
 
     input:
-    path x
+    path ftp_dir
 
     output:
     path "*genomic.fna.gz"
@@ -142,7 +142,7 @@ process download_assemblies {
 
     md5check_function
 
-    done < $x
+    done < $ftp_dir
 
     """
 }
@@ -150,14 +150,14 @@ process download_assemblies {
 process assembly_stats {
 
     input:
-    path x
+    path assembly
 
     output:
     path "assembly_stats.txt"
 
     """
 
-    stats.sh in=$x format=3 addname= | \
+    stats.sh in=$assembly format=3 addname= | \
     grep -v n_scaffolds | \
     sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > \
     assembly_stats.txt
@@ -171,7 +171,7 @@ process diamond {
     maxForks 4
 
     input:
-    path x
+    path assembly
 
     output:
     path "*.dmnd.tsv"
@@ -180,7 +180,7 @@ process diamond {
     """
 
     db=$PWD/virusdb/virusdb.dmnd
-    assembly=$x
+    assembly=$assembly
 
     idle_fn () {
         if test -f "\$db"
@@ -217,8 +217,8 @@ process diamond {
 process intersect_domains_merge_extract {
 
     input:
-    path x
-    path y
+    path diamond_tsv
+    path assembly_nsq_db
 
     output:
     path "*_strict.fasta", emit: strict_ch
@@ -256,7 +256,7 @@ process intersect_domains_merge_extract {
     # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue \
     # model_acc model_name model_description
 
-    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $x | \
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
     sort -k1,1 -k2,2n | \
     tee >(bedtools merge > diamond-result.nonredundant.bed) | \
     bedtools cluster | \
@@ -271,7 +271,7 @@ process intersect_domains_merge_extract {
 
     # Prepare variables
 
-    dbpath=\$(readlink -f \$(echo $y | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
+    dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
     filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
 
     # First coordinate range extraction (strictly overlapping alignments)
@@ -296,8 +296,8 @@ process intersect_domains_merge_extract {
 process orf_extract {
 
     input:
-    path x
-    path y
+    path context_fasta
+    path nr_bed
 
     """
 
@@ -305,9 +305,9 @@ process orf_extract {
     # Extracts ORFs between START and STOP codons. STOP is NOT included in reported ORF coordinates.
     # Converts ORF output to the original genomic loci in ascending BED format, with predicted protein sequence.
 
-    if [ -s $x ];
+    if [ -s $context_fasta ];
         then
-            cat $x | \
+            cat $context_fasta | \
             sed 's/:/-/' | \
             getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
             seqtk seq - | \
@@ -324,7 +324,7 @@ process orf_extract {
     # Intersect ORFs with strictly overlapping features, reports:
     # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
-    bedtools intersect -a $y -b context_ORFs.txt -wo -sorted | \
+    bedtools intersect -a $nr_bed -b context_ORFs.txt -wo -sorted | \
     awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
     intersected_ORFs.txt
 
@@ -336,7 +336,7 @@ process genewise {
 
     input:
     path annotated_tsv
-    path strict_align_regions
+    path strict_fasta
 
     """
 
@@ -350,7 +350,7 @@ process genewise {
 
     WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
 
-    genewisedb -prodb best_query_pool.fa -dnadb $strict_align_regions -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+    genewisedb -prodb best_query_pool.fa -dnadb $strict_fasta -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
     sed '1,/#Alignments/d' | \
     grep -v ">\\|Bits   Query\\|-----------" | \
     awk '/^[0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
@@ -368,21 +368,21 @@ process genewise {
 process reciprocal_diamond {
 
     input:
-    path x
-    path y
+    path strict_fastas
+    path reciprocal_db
 
     output:
     path "*.dmnd.tsv"
 
     """
 
-    cat $x > all_seqs.fasta
+    cat $strict_fastas > all_seqs.fasta
 
     diamond blastx \
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
-    -d $y \
+    -d $reciprocal_db \
     -q all_seqs.fasta \
     -o reciprocal-matches.dmnd.tsv \
     -e 1e-5 \
@@ -412,7 +412,6 @@ workflow {
     // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
         diamond(fetched_assembly_files) | intersect_domains_merge_extract
-        detected_features = intersect_domains_merge_extract.out.strict_ch.collect()
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
         orf_extract (intersect_domains_merge_extract.out.context_ch, intersect_domains_merge_extract.out.nr_bed_ch)
@@ -422,6 +421,7 @@ workflow {
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        reciprocal_diamond (detected_features, reciprocal_db_ch)
+        collected_strict_fastas = intersect_domains_merge_extract.out.strict_ch.collect()
+        reciprocal_diamond (collected_strict_fastas, reciprocal_db_ch)
 
 }
