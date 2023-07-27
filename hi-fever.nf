@@ -340,28 +340,61 @@ process genewise {
 
     """
 
+    # Set up
+
     protein_db=$PWD/virusdb/DB_clu_rep.fasta
-
-    cut -f1 $annotated_tsv | \
-    sort | \
-    uniq | \
-    seqtk subseq \$protein_db - > \
-    best_query_pool.fa
-
+    mkdir wise_tmp
     WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
 
-    genewisedb -prodb best_query_pool.fa -dnadb $strict_fasta -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
-    sed '1,/#Alignments/d' | \
-    grep -v ">\\|Bits   Query\\|-----------" | \
-    awk '/^[0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
-    sed 's/DIVIDE_STRING/\t/g' | \
-    tr -s '\t' | \
-    tr -s ' ' '\t' | \
-    sort -k5,5 -k1,1nr | \
-    sort -u -k5,5 > \
-    genewisedb_example
+    # Reformat and extract nucleotide FASTA, one per file
 
-    rm best_query_pool.fa
+    sed 's/ .*//' < $strict_fasta > wise_tmp/temp.fa
+    grep ">" wise_tmp/temp.fa | sed 's/>//' > wise_tmp/nuc_headers
+
+    while read line
+        do
+            echo \$line | \
+            seqtk subseq wise_tmp/temp.fa - > \
+            wise_tmp/\$line
+        done < wise_tmp/nuc_headers
+
+    # Generate query-target pairing file & protein accessions to extract
+
+    cut -f1,4-6 $annotated_tsv | \
+    uniq | \
+    tee >(cut -f1 | sort | uniq > wise_tmp/prot_headers) | \
+    awk 'BEGIN{OFS="\t"} {print \$1,\$2":"\$3"-"\$4}' > \
+    wise_tmp/matched_pairs
+
+    # Extract protein FASTA, one per file
+
+    while read line
+        do
+            echo \$line | \
+            seqtk subseq \$protein_db - > \
+            wise_tmp/\$line
+        done < wise_tmp/prot_headers
+
+    # GeneWise operations
+
+    while read line
+        do
+            query=\$(echo \$line | cut -f1 -d ' ')
+            target=\$(echo \$line | cut -f2 -d ' ')
+            genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+            grep -v ">\\|Bits   Query" | \
+            awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
+            sed 's/DIVIDE_STRING/\t/g' | \
+            tr -s '\t' | \
+            tr -s ' ' '\t' | \
+            sort -k5,5 -k1,1nr | \
+            sort -u -k5,5 >> \
+            genewise_example
+        done < wise_tmp/matched_pairs
+
+    # Cleanup
+
+    rm -r wise_tmp
 
     """
 
