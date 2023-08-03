@@ -19,6 +19,7 @@ params.flank = "3000"
 params.reciprocal_db = "nr_clustered.dmnd"
 params.orf_size_nt = "150"
 params.genewise_matrix = "BLOSUM62"
+params.stop_task = "remove"
 
 // Define workflow processes
 
@@ -343,13 +344,12 @@ process genewise {
     # Check for file content
 
     if [ -s $strict_fasta ];
+
         then
 
-            # Set up
-
             protein_db=$PWD/virusdb/DB_clu_rep.fasta
+            export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
-            WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
 
             # Reformat and extract nucleotide FASTA, one per file
 
@@ -394,15 +394,22 @@ process genewise {
                     tr -s ' ' '\t' | \
                     sort -k5,5 -k1,1nr | \
                     sort -u -k5,5 >> \
-                    genewise_example
+                    genewise
                 done < wise_tmp/matched_pairs
 
             # Cleanup
 
             rm -r wise_tmp
 
+            # Post-processing
+
+            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise > genewise_processed.txt
+            rm "\$(readlink -f genewise)"
+
         else
-            touch genewise_example
+
+            touch genewise_processed.txt
+
     fi
 
     """
