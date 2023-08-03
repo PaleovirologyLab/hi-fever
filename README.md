@@ -40,7 +40,7 @@ To run the workflow:
 
 `nextflow hi-fever.nf`
 
-## Adjustable parameters with example inputs
+## Optional parameters with example inputs
 
 Custom protein query file (default: protein_query.fasta).
 
@@ -93,6 +93,10 @@ Minimum length of extracted ORFs, in nucleotides (default: 150).
 Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, BLOSUM45, BLOSUM30.
 
 - `--genewise_matrix BLOSUM45`
+
+Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], convert [convert in-frame STOPs to lowercase].
+
+- `--stop_task convert`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
