@@ -253,8 +253,9 @@ process intersect_domains_merge_extract {
     # Intersects this with the maximal range temp file
     # Converts to a subject oriented bed (i.e., protein hit and coordinates).
     # Intersects with domain coordinate annotation file, reports:
-    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen \
-    # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue \
+
+    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen
+    # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue
     # model_acc model_name model_description
 
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
@@ -338,10 +339,11 @@ process genewise {
     input:
     path annotated_tsv
     path strict_fasta
+    path context_fasta
 
     """
 
-    # Check for file content
+    # Check if any candidates were found in the assembly to proceed
 
     if [ -s $strict_fasta ];
 
@@ -351,7 +353,7 @@ process genewise {
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
 
-            # Reformat and extract nucleotide FASTA, one per file
+            # Reformat and extract strict nucleotide FASTA, one per file
 
             sed 's/ .*//' < $strict_fasta > wise_tmp/temp.fa
             grep ">" wise_tmp/temp.fa | sed 's/>//' > wise_tmp/nuc_headers
@@ -397,6 +399,43 @@ process genewise {
                     genewise
                 done < wise_tmp/matched_pairs
 
+###########################################################
+
+            # Reformat and extract context nucleotide FASTA, one per file
+
+            sed 's/ .*//' < $context_fasta > wise_tmp/temp.fa
+            grep ">" wise_tmp/temp.fa | sed 's/>//' > wise_tmp/nuc_headers
+
+            while read line
+                do
+                    echo \$line | \
+                    seqtk subseq wise_tmp/temp.fa - > \
+                    wise_tmp/\$line
+                done < wise_tmp/nuc_headers
+
+            # Generate query-target pairing file
+
+
+
+
+            cut -f1,4-6 $annotated_tsv | \
+            uniq | \
+
+            awk 'BEGIN{OFS="\t"} {print \$1,\$2":"\$3"-"\$4}' > \
+            wise_tmp/matched_pairs
+
+            # Extract protein FASTA, one per file
+
+            while read line
+                do
+                    echo \$line | \
+                    seqtk subseq \$protein_db - > \
+                    wise_tmp/\$line
+                done < wise_tmp/prot_headers
+
+###########################################################
+
+            
             # Cleanup
 
             rm -r wise_tmp
@@ -411,6 +450,8 @@ process genewise {
             touch genewise_processed.txt
 
     fi
+
+    
 
     """
 
@@ -468,7 +509,7 @@ workflow {
         orf_extract (intersect_domains_merge_extract.out.context_ch, intersect_domains_merge_extract.out.nr_bed_ch)
 
     // Frameshift and STOP aware reconstruction of EVE sequences
-        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_ch)
+        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_ch, intersect_domains_merge_extract.out.context_ch)
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
