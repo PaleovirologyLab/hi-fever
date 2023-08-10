@@ -222,10 +222,11 @@ process intersect_domains_merge_extract {
     path assembly_nsq_db
 
     output:
-    path "*_strict.fasta", emit: strict_ch
-    path "*_context.fasta", emit: context_ch
-    path "diamond-result.nonredundant.bed", emit: nr_bed_ch
+    path "strict_coords.bed", emit: strict_coords_ch
+    path "context_coords.bed", emit: context_coords_ch
     path "matches.dmnd.annot.tsv", emit: annot_tsv_ch
+    path "*_strict.fasta", emit: strict_fa_ch
+    path "*_context.fasta", emit: context_fa_ch
 
     """
 
@@ -260,11 +261,11 @@ process intersect_domains_merge_extract {
 
     awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
     sort -k1,1 -k2,2n | \
-    tee >(bedtools merge > diamond-result.nonredundant.bed) | \
+    tee >(bedtools merge > strict_coords.bed) | \
     bedtools cluster | \
     sort -k16,16n -k11,11nr | \
     sort -u -k16,16n | \
-    bedtools intersect -a - -b diamond-result.nonredundant.bed -loj -sorted | \
+    bedtools intersect -a - -b strict_coords.bed -loj -sorted | \
     awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
     sort -k1,1 -k2,2n | \
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
@@ -278,16 +279,25 @@ process intersect_domains_merge_extract {
 
     # First coordinate range extraction (strictly overlapping alignments)
 
-    awk '{print \$1, \$2"-"\$3}' diamond-result.nonredundant.bed | \
+    awk '{print \$1, \$2"-"\$3}' strict_coords.bed | \
     blastdbcmd -entry_batch - -db \$dbpath > \
     "\${filename}_strict.fasta"
 
     # Second coordinate range extraction (allow interval and add flanks)
 
-    bedtools merge -d $params.interval -i diamond-result.nonredundant.bed | \
+    bedtools merge -d $params.interval -i strict_coords.bed | \
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
     blastdbcmd -entry_batch - -db \$dbpath > \
     "\${filename}_context.fasta"
+
+    # Generate accurate context FASTA coordinates (prior operation can leave non-existant overhang on the right flank)
+
+    grep ">" *_context.fasta | \
+    sed 's/ .*//; s/>//; s/[:-]/\t/g' | \
+    sort -k1,1 -k2,2n > \
+    context_coords.bed
+
+    # Clean up database files
 
     rm \$dbpath*
 
@@ -320,7 +330,7 @@ process orf_extract {
             sort -k1,1 -k2,2n > \
             context_ORFs.txt
         else
-            touch context_ORFs.txt
+            true
     fi
 
     # Intersect ORFs with strictly overlapping features, reports:
@@ -340,6 +350,7 @@ process genewise {
     path annotated_tsv
     path strict_fasta
     path context_fasta
+    path context_coords
 
     """
 
@@ -365,11 +376,12 @@ process genewise {
                     wise_tmp/\$line
                 done < wise_tmp/nuc_headers
 
-            # Generate query-target pairing file & protein accessions to extract
+            # Generate query-target pairing file for strict FASTA & protein accessions to extract
 
             cut -f1,4-6 $annotated_tsv | \
             uniq | \
             tee >(cut -f1 | sort | uniq > wise_tmp/prot_headers) | \
+            tee >(awk 'BEGIN{OFS="\t"} {print \$2, \$3, \$4, \$1}' | sort -k1,1 -k2,2n > wise_tmp/intersection_bed) | \
             awk 'BEGIN{OFS="\t"} {print \$1,\$2":"\$3"-"\$4}' > \
             wise_tmp/matched_pairs
 
@@ -382,7 +394,7 @@ process genewise {
                     wise_tmp/\$line
                 done < wise_tmp/prot_headers
 
-            # GeneWise operations
+            # GeneWise operations, strict FASTA
 
             while read line
                 do
@@ -396,10 +408,8 @@ process genewise {
                     tr -s ' ' '\t' | \
                     sort -k5,5 -k1,1nr | \
                     sort -u -k5,5 >> \
-                    genewise
+                    genewise_strict
                 done < wise_tmp/matched_pairs
-
-###########################################################
 
             # Reformat and extract context nucleotide FASTA, one per file
 
@@ -413,45 +423,47 @@ process genewise {
                     wise_tmp/\$line
                 done < wise_tmp/nuc_headers
 
-            # Generate query-target pairing file
+            # Generate query-target pairing file for context FASTA
 
-
-
-
-            cut -f1,4-6 $annotated_tsv | \
-            uniq | \
-
-            awk 'BEGIN{OFS="\t"} {print \$1,\$2":"\$3"-"\$4}' > \
+            bedtools intersect -a $context_coords -b wise_tmp/intersection_bed -loj -F 1 -sorted | \
+            cut -f1-3,7 | \
+            awk 'BEGIN{OFS="\t"} {print \$4, \$1":"\$2"-"\$3}' > \
             wise_tmp/matched_pairs
 
-            # Extract protein FASTA, one per file
+            # GeneWise operations, context FASTA
 
             while read line
                 do
-                    echo \$line | \
-                    seqtk subseq \$protein_db - > \
-                    wise_tmp/\$line
-                done < wise_tmp/prot_headers
+                    query=\$(echo \$line | cut -f1 -d ' ')
+                    target=\$(echo \$line | cut -f2 -d ' ')
+                    genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+                    grep -v ">\\|Bits   Query" | \
+                    awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
+                    sed 's/DIVIDE_STRING/\t/g' | \
+                    tr -s '\t' | \
+                    tr -s ' ' '\t' | \
+                    sort -k5,5 -k1,1nr | \
+                    sort -u -k5,5 >> \
+                    genewise_context
+                done < wise_tmp/matched_pairs
 
-###########################################################
-
-            
             # Cleanup
 
             rm -r wise_tmp
 
             # Post-processing
 
-            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise > genewise_processed.txt
-            rm "\$(readlink -f genewise)"
+            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_strict > genewise_strict.tbl
+            rm "\$(readlink -f genewise_strict)"
+
+            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_context > genewise_context.tbl
+            rm "\$(readlink -f genewise_context)"
 
         else
 
-            touch genewise_processed.txt
+            true
 
     fi
-
-    
 
     """
 
@@ -489,7 +501,7 @@ process reciprocal_diamond {
 
 workflow {
 
-    // Build clustered DIAMOND query database from user supplied protein fasta
+    // Build clustered DIAMOND query database from user supplied protein FASTA
         def query_ch = Channel.fromPath(params.query_file_aa)
         build_db(query_ch)
 
@@ -506,14 +518,14 @@ workflow {
         diamond(fetched_assembly_files) | intersect_domains_merge_extract
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
-        orf_extract (intersect_domains_merge_extract.out.context_ch, intersect_domains_merge_extract.out.nr_bed_ch)
+        orf_extract (intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.strict_coords_ch)
 
     // Frameshift and STOP aware reconstruction of EVE sequences
-        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_ch, intersect_domains_merge_extract.out.context_ch)
+        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch)
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        collected_strict_fastas = intersect_domains_merge_extract.out.strict_ch.collect()
+        collected_strict_fastas = intersect_domains_merge_extract.out.strict_fa_ch.collect()
         reciprocal_diamond (collected_strict_fastas, reciprocal_db_ch)
 
 }
