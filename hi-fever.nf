@@ -290,7 +290,7 @@ process intersect_domains_merge_extract {
     blastdbcmd -entry_batch - -db \$dbpath > \
     "\${filename}_context.fasta"
 
-    # Generate accurate context FASTA coordinates (prior operation can leave non-existant overhang on the right flank)
+    # Generate accurate context FASTA coordinates (prior awk operation can leave non-existent overhang on the right flank)
 
     grep ">" *_context.fasta | \
     sed 's/ .*//; s/>//; s/[:-]/\t/g' | \
@@ -376,12 +376,13 @@ process genewise {
                     wise_tmp/\$line
                 done < wise_tmp/nuc_headers
 
-            # Generate query-target pairing file for strict FASTA & protein accessions to extract
+            # Generate query-target pairing file for strict FASTA, protein accessions to extract, and file for later intersection with context coordinates
 
             cut -f1,4-6 $annotated_tsv | \
             uniq | \
             tee >(cut -f1 | sort | uniq > wise_tmp/prot_headers) | \
             tee >(awk 'BEGIN{OFS="\t"} {print \$2, \$3, \$4, \$1}' | sort -k1,1 -k2,2n > wise_tmp/intersection_bed) | \
+            tee >(cut -f2-4 > wise_tmp/genomic_coords) | \
             awk 'BEGIN{OFS="\t"} {print \$1,\$2":"\$3"-"\$4}' > \
             wise_tmp/matched_pairs
 
@@ -408,8 +409,17 @@ process genewise {
                     tr -s ' ' '\t' | \
                     sort -k5,5 -k1,1nr | \
                     sort -u -k5,5 >> \
-                    genewise_strict
+                    wise_tmp/genewise_strict
                 done < wise_tmp/matched_pairs
+
+            # Back-calculate genomic coords from genewise
+
+            paste wise_tmp/genewise_strict wise_tmp/genomic_coords | \
+            tr -s '\t' | \
+            awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' > \
+            test_output
+
+            #############
 
             # Reformat and extract context nucleotide FASTA, one per file
 
@@ -444,20 +454,33 @@ process genewise {
                     tr -s ' ' '\t' | \
                     sort -k5,5 -k1,1nr | \
                     sort -u -k5,5 >> \
-                    genewise_context
+                    wise_tmp/genewise_context
                 done < wise_tmp/matched_pairs
 
             # Cleanup
 
-            rm -r wise_tmp
+            # rm -r wise_tmp
+
+            # Conditionally merge results, retain context if it encompasses strict
+
+            
+
+
+            # genewise_strict
+            # genewise_context
+
+
+
+
+
 
             # Post-processing
 
-            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_strict > genewise_strict.tbl
-            rm "\$(readlink -f genewise_strict)"
+            # python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_strict > genewise_strict.tbl
+            # rm "\$(readlink -f genewise_strict)"
 
-            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_context > genewise_context.tbl
-            rm "\$(readlink -f genewise_context)"
+            # python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_context > genewise_context.tbl
+            # rm "\$(readlink -f genewise_context)"
 
         else
 
