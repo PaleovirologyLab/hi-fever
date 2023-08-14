@@ -246,7 +246,7 @@ process intersect_domains_merge_extract {
 
     idle_fn
 
-    # Intersect domains & produce nonredundant BED:
+    # Intersect domains & produce non-redundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
     # Calculates maximal strictly overlapping coordinate ranges and stores in temp file.
     # Adds a column to main tsv denoting which coordinates are in mergable overlapping clusters
@@ -309,7 +309,7 @@ process orf_extract {
 
     input:
     path context_fasta
-    path nr_bed
+    path strict_coords
 
     """
 
@@ -336,7 +336,7 @@ process orf_extract {
     # Intersect ORFs with strictly overlapping features, reports:
     # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
-    bedtools intersect -a $nr_bed -b context_ORFs.txt -wo -sorted | \
+    bedtools intersect -a $strict_coords -b context_ORFs.txt -wo -sorted | \
     awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
     intersected_ORFs.txt
 
@@ -416,10 +416,9 @@ process genewise {
 
             paste wise_tmp/genewise_strict wise_tmp/genomic_coords | \
             tr -s '\t' | \
-            awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' > \
-            test_output
-
-            #############
+            awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$5, "strict", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$5, "strict", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' | \
+            sort -k1,1 -k2,2n > \
+            wise_tmp/output1
 
             # Reformat and extract context nucleotide FASTA, one per file
 
@@ -437,6 +436,7 @@ process genewise {
 
             bedtools intersect -a $context_coords -b wise_tmp/intersection_bed -loj -F 1 -sorted | \
             cut -f1-3,7 | \
+            tee wise_tmp/genomic_coords | \
             awk 'BEGIN{OFS="\t"} {print \$4, \$1":"\$2"-"\$3}' > \
             wise_tmp/matched_pairs
 
@@ -457,30 +457,28 @@ process genewise {
                     wise_tmp/genewise_context
                 done < wise_tmp/matched_pairs
 
+            # Back-calculate genomic coords from genewise, remove redundancy (sites found in two context FASTAs)
+
+            paste wise_tmp/genewise_context wise_tmp/genomic_coords | \
+            tr -s '\t' |
+            awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' | \
+            sort -u -k1,1 -k2,2n > \
+            wise_tmp/output2
+
+            # Intersect and concatenate results (keep strict if not covered by context, otherwise keep context)
+            # First report strict predictions not encompassed by a context prediction (some tandems)
+            # Second find strict predictions encompassed by context predictions, report latter
+
+            bedtools intersect -v -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wa > wise_tmp/merged_results
+            bedtools intersect -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wb | cut -f15- >> wise_tmp/merged_results
+
+            # Post-processing of in-frame STOPs
+
+            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > genewise
+
             # Cleanup
 
-            # rm -r wise_tmp
-
-            # Conditionally merge results, retain context if it encompasses strict
-
-            
-
-
-            # genewise_strict
-            # genewise_context
-
-
-
-
-
-
-            # Post-processing
-
-            # python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_strict > genewise_strict.tbl
-            # rm "\$(readlink -f genewise_strict)"
-
-            # python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file genewise_context > genewise_context.tbl
-            # rm "\$(readlink -f genewise_context)"
+            rm -r wise_tmp
 
         else
 
