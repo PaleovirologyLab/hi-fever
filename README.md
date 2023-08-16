@@ -139,6 +139,10 @@ cd ..
 ```
 conda activate hi-fever
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
-diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered.dmnd --threads 8
+wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.FULL.gz
+gunzip prot.accession2taxid.FULL.gz
+wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
+unzip taxdmp.zip
+diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered_wtaxa --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp --threads 40
 rm nr_rep_seq.fasta.gz
 ```
