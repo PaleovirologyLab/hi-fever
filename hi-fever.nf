@@ -460,17 +460,20 @@ process genewise {
             # Back-calculate genomic coords from genewise, remove redundancy (sites found in two context FASTAs)
 
             paste wise_tmp/genewise_context wise_tmp/genomic_coords | \
-            tr -s '\t' |
+            tr -s '\t' | \
             awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' | \
             sort -u -k1,1 -k2,2n > \
             wise_tmp/output2
 
             # Intersect and concatenate results (keep strict if not covered by context, otherwise keep context)
-            # First report strict predictions not encompassed by a context prediction (some tandems)
-            # Second find strict predictions encompassed by context predictions, report latter
 
+            # First report strict predictions not encompassed by a context prediction
             bedtools intersect -v -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wa > wise_tmp/merged_results
-            bedtools intersect -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wb | cut -f15- >> wise_tmp/merged_results
+
+            # Second find strict predictions encompassed by context predictions, report latter
+            bedtools intersect -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wb | \
+            awk 'BEGIN{OFS="\t"} {print \$15, \$16, \$17, \$18, \$5, \$20, \$21, \$22, \$23, \$24, \$25, \$26, \$27, \$28}' >> \
+            wise_tmp/merged_results
 
             # Post-processing of in-frame STOPs
 
