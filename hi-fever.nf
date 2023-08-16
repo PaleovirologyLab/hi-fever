@@ -462,7 +462,7 @@ process genewise {
             paste wise_tmp/genewise_context wise_tmp/genomic_coords | \
             tr -s '\t' | \
             awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$5, "context", \$1, \$2, \$3, \$4, \$8, \$9, \$10, \$11}' | \
-            sort -u -k1,1 -k2,2n > \
+            sort -u -k1,1 -k2,2n -k3,3nr > \
             wise_tmp/output2
 
             # Intersect and concatenate results (keep strict if not covered by context, otherwise keep context)
