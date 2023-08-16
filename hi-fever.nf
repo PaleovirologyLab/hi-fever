@@ -16,7 +16,7 @@ params.diamond_matrix = "BLOSUM62"
 params.diamond_cpus = "12"
 params.interval = "1000"
 params.flank = "3000"
-params.reciprocal_db = "nr_clustered.dmnd"
+params.reciprocal_db = "nr_clustered_wtaxa.dmnd"
 params.orf_size_nt = "150"
 params.genewise_matrix = "BLOSUM62"
 params.stop_task = "remove"
@@ -352,6 +352,9 @@ process genewise {
     path context_fasta
     path context_coords
 
+    output:
+    path "*.genewise"
+
     """
 
     # Check if any candidates were found in the assembly to proceed
@@ -359,6 +362,8 @@ process genewise {
     if [ -s $strict_fasta ];
 
         then
+
+            title=
 
             protein_db=$PWD/virusdb/DB_clu_rep.fasta
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
@@ -496,7 +501,7 @@ process genewise {
 process reciprocal_diamond {
 
     input:
-    path strict_fastas
+    path genewise
     path reciprocal_db
 
     output:
@@ -504,18 +509,20 @@ process reciprocal_diamond {
 
     """
 
-    cat $strict_fastas > all_seqs.fasta
+    cat $genewise > all_genewise.txt
 
-    diamond blastx \
+    awk '{print ">"\$5"\\n"\$13}' all_genewise.txt > predicted_proteins.fasta
+
+    diamond blastp \
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
     -d $reciprocal_db \
-    -q all_seqs.fasta \
+    -q predicted_proteins.fasta \
     -o reciprocal-matches.dmnd.tsv \
     -e 1e-5 \
     -k 20 \
-    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
+    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums
 
     """
 
@@ -545,11 +552,10 @@ workflow {
         orf_extract (intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.strict_coords_ch)
 
     // Frameshift and STOP aware reconstruction of EVE sequences
-        genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch)
+        collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch) | collect
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        collected_strict_fastas = intersect_domains_merge_extract.out.strict_fa_ch.collect()
-        reciprocal_diamond (collected_strict_fastas, reciprocal_db_ch)
+        reciprocal_diamond (collected_genewise, reciprocal_db_ch)
 
 }
