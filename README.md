@@ -34,7 +34,7 @@ By default the following must be in your working directory:
 
 >`domains` pHMM directory [[more information]](#phmm-library)
 
->`nr_clustered.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
+>`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
 To run the workflow:
 
@@ -54,7 +54,7 @@ Location of custom pHMM library for query domain annotation (default: domains).
 
 - `--phmms Pfam-32`
 
-Custom reciprocal BLASTx database (DIAMOND formatted, default: nr_clustered.dmnd).
+Custom reciprocal BLASTp database (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
 
 - `--reciprocal_db nr.dmnd`
 
@@ -133,7 +133,7 @@ cd ..
 
 ## NCBI nr proteins db
 
-- For the reciprocal DIAMOND BLASTx stage, a local nr or clustered nr DIAMOND formatted database is recommended.
+- For the reciprocal DIAMOND BLASTp stage, a local nr or clustered nr DIAMOND formatted database is recommended.
 - A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:
 
 ```
@@ -143,6 +143,5 @@ wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2ta
 gunzip prot.accession2taxid.FULL.gz
 wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
 unzip taxdmp.zip
-diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered_wtaxa --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp --threads 40
-rm nr_rep_seq.fasta.gz
+diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered_wtaxa --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp --threads 16
 ```
