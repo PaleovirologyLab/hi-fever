@@ -9,7 +9,7 @@
 Clone the repo, e.g., with GitHub CLI:
 
 ```
-gh repo clone ACCOUNT/hi-fever
+gh repo clone Paleovirology/hi-fever
 ```
 
 For installation of software dependencies, a conda `environment.yml` file is provided.
