@@ -353,7 +353,7 @@ process genewise {
     path context_coords
 
     output:
-    path "*.genewise"
+    path "*_genewise"
 
     """
 
@@ -363,8 +363,7 @@ process genewise {
 
         then
 
-            title=
-
+            title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
             protein_db=$PWD/virusdb/DB_clu_rep.fasta
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
@@ -482,7 +481,7 @@ process genewise {
 
             # Post-processing of in-frame STOPs
 
-            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > genewise
+            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > "\${title}_genewise"
 
             # Cleanup
 
@@ -505,7 +504,8 @@ process reciprocal_diamond {
     path reciprocal_db
 
     output:
-    path "*.dmnd.tsv"
+    path "reciprocal-matches.dmnd.tsv", emit: reciprocal_hits_ch
+    path "all_genewise.txt", emit: original_genewise_ch
 
     """
 
@@ -523,6 +523,44 @@ process reciprocal_diamond {
     -e 1e-5 \
     -k 20 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums
+
+    """
+
+}
+
+process attempt_genewise_improvement {
+
+    input:
+
+    path original_genewise
+    path reciprocal_hits
+    path reciprocal_db
+
+
+    """
+
+    mkdir wise_tmp
+
+    # Generate table of original best proteins per locus
+
+    cut -f5,8 $original_genewise | \
+    sort -k1,1 > \
+    wise_tmp/original_pairs
+
+    # Generate table of reciprocal best proteins per locus
+
+    sort -k1,1 -k12,12nr $reciprocal_hits | \
+    sort -u -k1,1 | \
+    cut -f1-2 > \
+    wise_tmp/reciprocal_pairs
+
+    # Find loci whose best hit has changed & get protein accessions
+
+    comm -13 wise_tmp/original_pairs wise_tmp/reciprocal_pairs | \
+    tee >(cut -f2 | sort | uniq > wise_tmp/protein_accessions) > \
+    wise_tmp/matched_pairs
+
+    # Extract best proteins from dmnd db
 
     """
 
@@ -557,5 +595,8 @@ workflow {
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
         reciprocal_diamond (collected_genewise, reciprocal_db_ch)
+
+    // Attempt genewise improvement
+        attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_db_ch)
 
 }
