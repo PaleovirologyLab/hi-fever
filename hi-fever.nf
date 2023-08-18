@@ -506,6 +506,7 @@ process reciprocal_diamond {
     output:
     path "reciprocal-matches.dmnd.tsv", emit: reciprocal_hits_ch
     path "all_genewise.txt", emit: original_genewise_ch
+    path "best_reciprocals.fasta", emit: reciprocal_fasta_ch
 
     """
 
@@ -519,10 +520,12 @@ process reciprocal_diamond {
     --masking seg \
     -d $reciprocal_db \
     -q predicted_proteins.fasta \
-    -o reciprocal-matches.dmnd.tsv \
     -e 1e-5 \
     -k 20 \
-    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums
+    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums full_sseq | \
+    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | cut -f2,18 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > best_reciprocals.fasta) | \
+    cut -f1-17 > \
+    reciprocal-matches.dmnd.tsv
 
     """
 
@@ -534,8 +537,9 @@ process attempt_genewise_improvement {
 
     path original_genewise
     path reciprocal_hits
+    path reciprocal_fasta
     path reciprocal_db
-
+    path strict_fastas_collected
 
     """
 
@@ -554,13 +558,43 @@ process attempt_genewise_improvement {
     cut -f1-2 > \
     wise_tmp/reciprocal_pairs
 
-    # Find loci whose best hit has changed & get protein accessions
+    # Find loci whose best hit has changed & get nuc + protein identifiers
 
     comm -13 wise_tmp/original_pairs wise_tmp/reciprocal_pairs | \
+    tee >(cut -f1 > wise_tmp/nuc_headers) | \
     tee >(cut -f2 | sort | uniq > wise_tmp/protein_accessions) > \
     wise_tmp/matched_pairs
 
-    # Extract best proteins from dmnd db
+    # Initialise nextflow file path (this seems to be a nextflow bug?)
+
+    touch $reciprocal_fasta
+
+    # Extract new best proteins into individual files
+
+    while read line
+        do
+            echo \$line | \
+            seqtk subseq $reciprocal_fasta - > \
+            wise_tmp/\$line
+        done < wise_tmp/protein_accessions
+
+    rm "\$(readlink -f $reciprocal_fasta)"
+
+    # Extract strict nucleotide regions
+
+    cat $strict_fastas_collected | \
+    sed 's/ .*//' > \
+    wise_tmp/temp.fa
+
+    while read line
+        do
+            echo \$line
+            seqtk subseq wise_tmp/temp.fa - > \
+            wise_tmp/\$line
+        done < wise_tmp/nuc_headers
+
+    # Genewise 1?
+
 
     """
 
@@ -585,6 +619,7 @@ workflow {
     // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
         diamond(fetched_assembly_files) | intersect_domains_merge_extract
+        strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
         orf_extract (intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.strict_coords_ch)
@@ -597,6 +632,6 @@ workflow {
         reciprocal_diamond (collected_genewise, reciprocal_db_ch)
 
     // Attempt genewise improvement
-        attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_db_ch)
+        attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_diamond.out.reciprocal_fasta_ch, reciprocal_db_ch, strict_fastas_collected)
 
 }
