@@ -692,9 +692,12 @@ process attempt_genewise_improvement {
 
     python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise
 
+    # Cleanup
 
+    rm -r wise_temp
 
     # I think the next step is to merge the two outputs, and remove the 'worst' prediction from any sites processes twice
+
 
     """
 
