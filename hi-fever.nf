@@ -694,7 +694,7 @@ process attempt_genewise_improvement {
 
     # Cleanup
 
-    rm -r wise_temp
+    rm -r wise_tmp
 
     # I think the next step is to merge the two outputs, and remove the 'worst' prediction from any sites processes twice
 
