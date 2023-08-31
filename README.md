@@ -152,7 +152,7 @@ Then change into the docker folder and run the following:
 
 ```
 cd docker
-docker build <docker-account-name>/hi-fever .
+docker build -t <docker-account-name>/hi-fever .
 docker images
 ```
 
