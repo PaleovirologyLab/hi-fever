@@ -145,3 +145,15 @@ wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
 unzip taxdmp.zip
 diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered_wtaxa --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp --threads 16
 ```
+## Docker
+To build and use the docker image first make sure docker is installed and running. Type ```docker run hello-world``` inside a terminal.
+
+Then change into the docker folder and run the following:
+
+```
+cd docker
+docker build <docker-account-name>/hi-fever .
+docker images
+```
+
+You should see the ```hi-fever``` image and an ```ubuntu``` base image.
