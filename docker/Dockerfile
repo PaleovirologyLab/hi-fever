@@ -1,7 +1,7 @@
 FROM ubuntu:20.04
 LABEL maintainer = "Jose Gabriel Nino Barreat <jose.ninobarreat@biology.ox.ac.uk>"
 
-# Set paths to the minoconda bin directory
+# Set paths to the miniconda bin directory
 ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"
 
