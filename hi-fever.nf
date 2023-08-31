@@ -30,7 +30,7 @@ process build_db {
 
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
-    path "virusdb.dmnd"
+    path "virusdb.dmnd", emit: db_ch
     publishDir "virusdb"
 
     """
@@ -53,7 +53,7 @@ process hmmer {
     path clustered_fasta
 
     output:
-    path "query_domains.hmmer"
+    path "query_domains.hmmer", emit: query_domains_ch
     publishDir "query_domains"
 
     """
@@ -172,28 +172,15 @@ process diamond {
     maxForks 4
 
     input:
-    path assembly
+    tuple path(assembly), path(db)
 
     output:
-    path "*.dmnd.tsv"
-    path "*.gz*nsq"
+    tuple path("*.dmnd.tsv"), path("*.gz*nsq")
 
     """
 
-    db=$PWD/virusdb/virusdb.dmnd
+    db=$db
     assembly=$assembly
-
-    idle_fn () {
-        if test -f "\$db"
-            then
-                return
-            else
-                sleep 0.5
-                idle_fn
-        fi
-    }
-
-    idle_fn
 
     diamond blastx \
     --$params.diamond_mode \
@@ -218,8 +205,7 @@ process diamond {
 process intersect_domains_merge_extract {
 
     input:
-    path diamond_tsv
-    path assembly_nsq_db
+    tuple path(diamond_tsv), path(assembly_nsq_db), path(domain_annotation)
 
     output:
     path "strict_coords.bed", emit: strict_coords_ch
@@ -232,19 +218,7 @@ process intersect_domains_merge_extract {
 
     # Wait for domain annotation file
 
-    domain_annotation=$PWD/query_domains/query_domains.hmmer
-
-    idle_fn () {
-        if test -f "\$domain_annotation"
-            then
-                return
-            else
-                sleep 0.5
-                idle_fn
-        fi
-    }
-
-    idle_fn
+    domain_annotation=$domain_annotation
 
     # Intersect domains & produce non-redundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
@@ -346,11 +320,15 @@ process orf_extract {
 
 process genewise {
 
+    debug true
+
     input:
     path annotated_tsv
     path strict_fasta
     path context_fasta
     path context_coords
+    path protein_db
+    path python_path
 
     output:
     path "*_genewise"
@@ -364,7 +342,7 @@ process genewise {
         then
 
             title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
-            protein_db=$PWD/virusdb/DB_clu_rep.fasta
+            protein_db=$protein_db
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
 
@@ -482,11 +460,11 @@ process genewise {
 
             # Post-processing of in-frame STOPs
 
-            python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > "\${title}_genewise"
+            python $python_path --task $params.stop_task --file wise_tmp/merged_results > "\${title}_genewise"
 
             # Cleanup
 
-            rm -r wise_tmp
+            # rm -r wise_tmp
 
         else
 
@@ -542,6 +520,7 @@ process attempt_genewise_improvement {
     path reciprocal_db
     path strict_fastas_collected
     path context_fastas_collected
+    path python_path
 
     """
 
@@ -690,7 +669,7 @@ process attempt_genewise_improvement {
 
     # Post-processing of in-frame STOPs
 
-    python $PWD/scripts/stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise
+    python $python_path --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise
 
     # Cleanup
 
@@ -721,7 +700,8 @@ workflow {
 
     // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond(fetched_assembly_files) | intersect_domains_merge_extract
+        diamond_out = diamond(fetched_assembly_files.combine(build_db.out.db_ch))
+        intersect_domains_merge_extract(diamond_out.combine(hmmer.out.query_domains_ch))
         strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
         context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
 
@@ -729,13 +709,14 @@ workflow {
         orf_extract (intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.strict_coords_ch)
 
     // Frameshift and STOP aware reconstruction of EVE sequences
-        collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch) | collect
+        python_path = Channel.fromPath('scripts/stop_convert_and_count.py')
+        collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch, build_db.out.clust_ch, python_path) | collect
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
         reciprocal_diamond (collected_genewise, reciprocal_db_ch)
 
     // Attempt genewise improvement
-        attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_diamond.out.reciprocal_fasta_ch, reciprocal_db_ch, strict_fastas_collected, context_fastas_collected)
+        attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_diamond.out.reciprocal_fasta_ch, reciprocal_db_ch, strict_fastas_collected, context_fastas_collected, python_path)
 
 }
