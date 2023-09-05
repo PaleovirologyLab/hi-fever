@@ -482,14 +482,14 @@ process reciprocal_diamond {
 
     output:
     path "reciprocal-matches.dmnd.tsv", emit: reciprocal_hits_ch
-    path "all_genewise.txt", emit: original_genewise_ch
+    path "pre_reciprocal_genewise.txt", emit: original_genewise_ch
     path "best_reciprocals.fasta", emit: reciprocal_fasta_ch
 
     """
 
-    cat $genewise > all_genewise.txt
+    cat $genewise > pre_reciprocal_genewise.txt
 
-    awk '{print ">"\$5"\\n"\$13}' all_genewise.txt > predicted_proteins.fasta
+    awk '{print ">"\$5"\\n"\$13}' pre_reciprocal_genewise.txt > predicted_proteins.fasta
 
     diamond blastp \
     --$params.diamond_mode \
@@ -562,7 +562,7 @@ process attempt_genewise_improvement {
 
     rm "\$(readlink -f $reciprocal_fasta)"
 
-    # Get all strict FASTAs together and extract relevant one
+    # Get all strict FASTAs together and extract relevant ones
 
     cat $strict_fastas_collected | \
     sed 's/ .*//' > \
@@ -606,14 +606,14 @@ process attempt_genewise_improvement {
     sed 's/ .*//' > \
     wise_tmp/temp.fa
 
-    #  Convert to BED for intersection with strict regions where best protein changed
+    #  Convert context ranges to BED for intersection with those strict regions where the best protein changed
 
     grep ">" wise_tmp/temp.fa | \
     sed 's/>//; s/:/\t/; s/-/\t/' | \
     sort -k1,1 -k2,2n > \
     wise_tmp/all_context_bed
 
-    # Intersect
+    # Intersect ranges, keep various outputs from the context ranges we need
 
     bedtools intersect -a wise_tmp/intersection_bed -b wise_tmp/all_context_bed -wb -f 1 -sorted | \
     tee >(awk 'BEGIN{OFS="\t"} {print \$5":"\$6"-"\$7}' > wise_tmp/nuc_headers) | \
@@ -647,7 +647,7 @@ process attempt_genewise_improvement {
             wise_tmp/genewise_context
         done < wise_tmp/matched_pairs
 
-    # Back-calculate genomic coords from genewise, remove redundancy (sites found in two context FASTAs)
+    # Back-calculate genomic coords from genewise & remove redundancy (sites found in two context FASTAs)
 
     paste wise_tmp/genewise_context wise_tmp/genomic_coords | \
     tr -s '\t' | \
@@ -667,14 +667,19 @@ process attempt_genewise_improvement {
 
     # Post-processing of in-frame STOPs
 
-    python $python_path --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise
+    python $python_path --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise.txt
+
+    # Merge both genewise outputs - for each locus keep the longest individual prediction
+
+    cat pre_reciprocal_genewise.txt post_reciprocal_genewise.txt | \
+    sort -k1,1 -k2,2n -k3,3nr | \
+    sort -u -k5,5 > \
+    genewise.txt
 
     # Cleanup
 
-    rm -r wise_tmp
-
-    # I think the next step is to merge the two outputs, and remove the 'worst' prediction from any sites processes twice
-
+    # rm -r wise_tmp
+    # rm "\$(readlink -f pre_reciprocal_genewise.txt)"  post_reciprocal_genewise.txt
 
     """
 
