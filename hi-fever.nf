@@ -320,8 +320,6 @@ process orf_extract {
 
 process genewise {
 
-    debug true
-
     input:
     path annotated_tsv
     path strict_fasta
@@ -464,7 +462,7 @@ process genewise {
 
             # Cleanup
 
-            # rm -r wise_tmp
+            rm -r wise_tmp
 
         else
 
