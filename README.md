@@ -136,9 +136,9 @@ Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, B
 
 - `--genewise_matrix BLOSUM45`
 
-Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], convert [convert in-frame STOPs to lowercase].
+Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], soft-mask [convert in-frame STOPs to lowercase].
 
-- `--stop_task convert`
+- `--stop_task soft-mask`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
