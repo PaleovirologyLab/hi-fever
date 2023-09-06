@@ -13,7 +13,7 @@ def stop_handler(sequence, action):
         codon = sequence[i:i + 3]
         if codon in codon_table:
             stop_codons += 1
-            if action == "convert":
+            if action == "soft-mask":
                 result.append(codon_table[codon])
         else:
             result.append(codon)
@@ -21,8 +21,8 @@ def stop_handler(sequence, action):
     return "".join(result), stop_codons
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Finds in-frame stops in Genewise coding sequence output, and either converts to lower-case or removes them, counting instances.")
-    parser.add_argument("--task", choices=["convert", "remove"], required=True, help="Task to perform on in-frame stop codons: 'convert' to convert them to lower case, 'remove' to delete them.")
+    parser = argparse.ArgumentParser(description="Finds in-frame stops in Genewise coding sequence output, and either soft masks or removes them, counting instances.")
+    parser.add_argument("--task", choices=["soft-mask", "remove"], required=True, help="Task to perform on in-frame stop codons: 'soft-mask' to convert to lower case, 'remove' to delete.")
     parser.add_argument("--file", required=True, help="Path to the input text file.")
 
     args = parser.parse_args()
