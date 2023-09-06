@@ -30,7 +30,7 @@ process build_db {
 
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
-    path "virusdb.dmnd", emit: db_ch
+    path "virusdb.dmnd", emit: vir_db_ch
     publishDir "virusdb"
 
     """
@@ -325,7 +325,7 @@ process genewise {
     path strict_fasta
     path context_fasta
     path context_coords
-    path protein_db
+    path clustered_proteins
     path python_path
 
     output:
@@ -340,7 +340,7 @@ process genewise {
         then
 
             title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
-            protein_db=$protein_db
+            protein_db=$clustered_proteins
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
 
@@ -678,8 +678,8 @@ process attempt_genewise_improvement {
 
     # Cleanup
 
-    # rm -r wise_tmp
-    # rm "\$(readlink -f pre_reciprocal_genewise.txt)"  post_reciprocal_genewise.txt
+    rm -r wise_tmp
+    rm "\$(readlink -f pre_reciprocal_genewise.txt)"  post_reciprocal_genewise.txt
 
     """
 
@@ -703,7 +703,7 @@ workflow {
 
     // Analyse downloaded assembly files
         assembly_stats(fetched_assembly_files)
-        diamond_out = diamond(fetched_assembly_files.combine(build_db.out.db_ch))
+        diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
         intersect_domains_merge_extract(diamond_out.combine(hmmer.out.query_domains_ch))
         strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
         context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
@@ -712,8 +712,9 @@ workflow {
         orf_extract (intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.strict_coords_ch)
 
     // Frameshift and STOP aware reconstruction of EVE sequences
-        python_path = Channel.fromPath('scripts/stop_convert_and_count.py')
-        collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch, build_db.out.clust_ch, python_path) | collect
+        python_path = Channel.value("$PWD/scripts/stop_convert_and_count.py")
+        clustered_proteins = Channel.value("$PWD/virusdb/DB_clu_rep.fasta")
+        collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, intersect_domains_merge_extract.out.strict_fa_ch, intersect_domains_merge_extract.out.context_fa_ch, intersect_domains_merge_extract.out.context_coords_ch, clustered_proteins, python_path) | collect
 
     // Reciprocal DIAMOND
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
