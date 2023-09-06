@@ -70,7 +70,7 @@ process hmmer {
 
     """
 
-    hmmscan --cpu 4 --noali --notextw --qformat fasta --domtblout raw_domains.txt $profile_dir/*.hmm $clustered_fasta 1> /dev/null
+    hmmscan --noali --notextw --qformat fasta --domtblout raw_domains.txt $profile_dir/*.hmm $clustered_fasta 1> /dev/null
 
     # Post-processing:
     # Merge overlapping query protein alignments, keep best (by bitscore)
