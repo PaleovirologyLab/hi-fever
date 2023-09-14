@@ -54,9 +54,11 @@ Run the workflow:
 
 `nextflow hi-fever.nf`
 
-### Option 2: Run from a Docker image
+### Option 2: Run from a Docker or Singularity image
 
 [Install Nextflow and add to $PATH](https://www.nextflow.io/docs/latest/getstarted.html).
+
+#### Docker
 
 Install Docker Engine, e.g., [for Ubuntu](https://docs.docker.com/engine/install/ubuntu), and run `sudo docker run hello-world` to confirm the installation is working.
 
@@ -80,7 +82,31 @@ cd ..
 
 Run the workflow:
 
-`nextflow hi-fever.nf -with-docker hi-fever`
+```
+nextflow hi-fever.nf -with-docker hi-fever
+```
+
+#### Singularity
+
+Generate the Docker image as above.
+
+Export the image as a tarball (for this you will need to lookup the image ID, which can be found with `docker images`):
+
+```
+docker save IMAGE_ID -o hi-fever.tar
+```
+
+Copy the tarball to a Cluster with Singularity available, or [install it](https://apptainer.org/docs/admin/main/installation.html) locally. Build the Singularity image:
+
+```
+singularity build singularity-hi-fever docker-archive:./hi-fever.tar
+```
+
+Run the workflow:
+
+```
+nextflow hi-fever.nf -with-singularity singularity-hi-fever
+```
 
 ## Optional parameters and example inputs
 
