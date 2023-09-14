@@ -40,7 +40,7 @@ To run with presets, ensure the following are in your working directory:
 
 ### Option 1: Run from a Conda environment
 
-A Conda `environment.yml` file is provided for installation of dependencies.
+A Conda `environment.yml` file is provided for installation of all dependencies including Nextflow.
 [Get Conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
 
 Create and activate the hi-fever environment:
@@ -52,7 +52,9 @@ conda activate hi-fever
 
 Run the workflow:
 
-`nextflow hi-fever.nf`
+```
+nextflow hi-fever.nf
+```
 
 ### Option 2: Run from a Docker or Singularity image
 
