@@ -20,7 +20,7 @@ Outputs include:
 - Assembly information
 - Predicted EVE protein domains
 
-## Install and run with presets
+## To install and run with presets
 
 Clone the repo, e.g., with GitHub CLI:
 
@@ -38,7 +38,7 @@ To run with presets, ensure the following are in your working directory:
 
 >`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
-### Option 1: Run from a Conda environment
+### Option 1: Run from a Conda environment (e.g., for working locally or on a HPC cluster)
 
 A Conda `environment.yml` file is provided for installation of all dependencies including Nextflow.
 [Get Conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
@@ -60,7 +60,7 @@ nextflow hi-fever.nf
 
 [Install Nextflow and add to $PATH](https://www.nextflow.io/docs/latest/getstarted.html).
 
-#### Docker
+#### Docker (e.g., for working on a cloud environment)
 
 Install Docker Engine, e.g., [for Ubuntu](https://docs.docker.com/engine/install/ubuntu), and run `sudo docker run hello-world` to confirm the installation is working.
 
@@ -88,7 +88,7 @@ Run the workflow:
 nextflow hi-fever.nf -with-docker hi-fever
 ```
 
-#### Singularity
+#### Singularity (e.g., for working on a HPC cluster)
 
 Generate the Docker image as above.
 
