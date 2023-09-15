@@ -56,6 +56,16 @@ Run the workflow:
 nextflow hi-fever.nf
 ```
 
+#### Running with Conda via a job scheduler, e.g., SLURM
+
+On HPC clusters a job scheduler such as SLURM is usually installed.
+
+To run the Conda environment on compute nodes, a template SLURM script is provided (`cluster-hi-fever.slurm`). To submit on a cluster:
+
+```
+sbatch cluster-hi-fever.slurm
+```
+
 ### Option 2: Run from a Docker image (e.g., for working on a cloud environment)
 
 [Install Nextflow and add to $PATH](https://www.nextflow.io/docs/latest/getstarted.html).
