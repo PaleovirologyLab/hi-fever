@@ -1,1 +1,1 @@
-rm -rf query_domains/ virusdb/ work/ .nextflow* report.html
+rm -rf query_domains/ virusdb/ work/ .nextflow* report.html logs
