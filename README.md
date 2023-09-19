@@ -110,6 +110,10 @@ Location of custom pHMM library for query domain annotation (default: domains).
 
 - `--phmms Pfam-32`
 
+Name of output directory. Note that rerunning the workflow without either renaming the previous output folder or resetting this parameter will lead to output overwriting (default: output).
+
+- `--outdir 2023-07-31-16:24-herpesviridae_vs_tarsier`
+
 Custom reciprocal BLASTp database (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
 
 - `--reciprocal_db nr.dmnd`
