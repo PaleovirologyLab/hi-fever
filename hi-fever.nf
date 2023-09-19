@@ -166,14 +166,16 @@ process assembly_stats {
     path assembly
 
     output:
-    path "assembly_stats.txt"
+    path "*.assembly_stats.txt"
 
     """
+
+    title=\$(readlink -f $assembly | sed 's/\\/.*\\///g; s/_genomic.*//')
 
     stats.sh in=$assembly format=3 addname= | \
     grep -v n_scaffolds | \
     sed 's/\\/.*\\///g; s/_genomic.fna.gz//' > \
-    assembly_stats.txt
+    "\${title}.assembly_stats.txt"
 
     """
 
@@ -345,13 +347,16 @@ process genewise {
 
     """
 
+    # Set dynamic output title
+
+    title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
+
     # Check if any candidates were found in the assembly to proceed
 
     if [ -s $strict_fasta ];
 
         then
 
-            title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
             protein_db=$clustered_proteins
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
             mkdir wise_tmp
@@ -478,7 +483,7 @@ process genewise {
 
         else
 
-            true
+            touch "\${title}_genewise"
 
     fi
 
@@ -697,6 +702,25 @@ process attempt_genewise_improvement {
 
 }
 
+process clean_and_publish {
+
+    input:
+    path collected_stats
+
+    output:
+    publishDir "output"
+    path "assembly_stats.txt"
+
+    """
+
+    # Assembly stats
+
+    cat $collected_stats > assembly_stats.txt
+
+    """
+
+}
+
 // Workflow definition
 
 workflow {
@@ -713,8 +737,10 @@ workflow {
         def ftp_ch = Channel.fromPath(params.ftp_file)
         fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
-    // Analyse downloaded assembly files
-        assembly_stats(fetched_assembly_files)
+    // Get stats about downloaded assembly files
+        collected_stats = assembly_stats(fetched_assembly_files) | collect
+
+    // Run main EVE search, annotate potential domains, and extract FASTAs
         diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
         intersect_domains_merge_extract(diamond_out.combine(hmmer.out.query_domains_ch))
         strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
@@ -732,7 +758,9 @@ workflow {
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
         reciprocal_diamond (collected_genewise, reciprocal_db_ch)
 
-    // Attempt genewise improvement
+    // Attempt genewise improvement if reciprocal best hit changed
         attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, reciprocal_diamond.out.reciprocal_hits_ch, reciprocal_diamond.out.reciprocal_fasta_ch, reciprocal_db_ch, strict_fastas_collected, context_fastas_collected, python_path)
 
+    // Cleanup and sort outputs
+        clean_and_publish(collected_stats)
 }
