@@ -12,6 +12,7 @@ process diamond {
 
     db=$db
     assembly=$assembly
+    cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / 4 : 1}')
 
     diamond blastx \
     --$params.diamond_mode \
@@ -20,7 +21,7 @@ process diamond {
     -d \$db \
     -q \$assembly \
     -o matches.dmnd.tsv \
-    -p $params.diamond_cpus \
+    -p \$cpu_count \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
 
     gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
