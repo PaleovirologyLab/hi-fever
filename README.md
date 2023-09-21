@@ -7,8 +7,9 @@
 Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. Some features:
 
 - Protein-to-DNA based search
-- Scales from laptop to cluster or cloud
 - Designed to function with 1000's of input assemblies
+- Scales from laptop to cluster or cloud
+- Conda or Docker compatible
 
 Outputs include:
 
@@ -53,7 +54,7 @@ conda activate hi-fever
 Run the workflow:
 
 ```
-nextflow hi-fever.nf
+nextflow main.nf
 ```
 
 #### Running with Conda via a job scheduler, e.g., SLURM
@@ -93,10 +94,14 @@ cd ..
 Run the workflow:
 
 ```
-nextflow hi-fever.nf -with-docker hi-fever
+nextflow main.nf -with-docker hi-fever --entry CLOUD
 ```
 
 ## Optional parameters and example inputs
+
+Workflow to run, intended either for local machine/cluster (LOCAL) or for cloud (CLOUD) (default: LOCAL).
+
+- `--entry CLOUD`
 
 Custom protein query file (default: protein_query.fasta).
 
