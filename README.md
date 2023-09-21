@@ -2,9 +2,25 @@
 
 > **Hi**gh-throughput next**f**low **EVE** **r**ecovery
 
-# About
+## About
 
-# Installation
+Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. Some features:
+
+- Protein-to-DNA based search
+- Scales from laptop to cluster or cloud
+- Designed to function with 1000's of input assemblies
+
+Outputs include:
+
+- Genomic coordinates of candidate EVEs
+- Best forward and reciprocal hits, with integrated taxonomy
+- Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware)
+- Extraction of flanking sequence
+- Open reading frame detection and extension beyond original hit
+- Assembly information
+- Predicted EVE protein domains
+
+## To install and run with presets
 
 Clone the repo, e.g., with GitHub CLI:
 
@@ -12,23 +28,9 @@ Clone the repo, e.g., with GitHub CLI:
 gh repo clone Paleovirology/hi-fever
 ```
 
-For installation of software dependencies, a conda `environment.yml` file is provided.
-[Get conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
-Create, activate, and check software environment:
+To run with presets, ensure the following are in your working directory:
 
-```
-conda env create -f environment.yml
-conda activate hi-fever
-conda list
-```
-
-# Usage
-
-## With presets
-
-By default the following must be in your working directory:
-
->`protein_query.fasta`
+>`protein_query.fasta` [[more information]](#protein-queries)
 
 >`ftp_list.txt` [[more information]](#assembly-list)
 
@@ -36,11 +38,65 @@ By default the following must be in your working directory:
 
 >`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
 
-To run the workflow:
+### Option 1: Run from a Conda environment (e.g., for working locally or on a HPC cluster)
 
-`nextflow hi-fever.nf`
+A Conda `environment.yml` file is provided for installation of all dependencies including Nextflow.
+[Get Conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
 
-## Optional parameters with example inputs
+Create and activate the hi-fever environment:
+
+```
+conda env create -f environment.yml
+conda activate hi-fever
+```
+
+Run the workflow:
+
+```
+nextflow hi-fever.nf
+```
+
+#### Running with Conda via a job scheduler, e.g., SLURM
+
+On HPC clusters a job scheduler such as SLURM is usually installed.
+
+To run the Conda environment on compute nodes, a template SLURM script is provided (`cluster-hi-fever.slurm`). To submit on a cluster:
+
+```
+sbatch cluster-hi-fever.slurm
+```
+
+### Option 2: Run from a Docker image (e.g., for working on a cloud environment)
+
+[Install Nextflow and add to $PATH](https://www.nextflow.io/docs/latest/getstarted.html).
+
+Install Docker Engine, e.g., [for Ubuntu](https://docs.docker.com/engine/install/ubuntu), and run `sudo docker run hello-world` to confirm the installation is working.
+
+Configure Docker to run as a non-root user:
+
+```
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
+docker run hello-world
+```
+
+Build and check the hi-fever Docker image:
+
+```
+cd docker
+docker build -t hi-fever .
+docker images
+cd ..
+```
+
+Run the workflow:
+
+```
+nextflow hi-fever.nf -with-docker hi-fever
+```
+
+## Optional parameters and example inputs
 
 Custom protein query file (default: protein_query.fasta).
 
@@ -94,17 +150,38 @@ Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, B
 
 - `--genewise_matrix BLOSUM45`
 
-Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], convert [convert in-frame STOPs to lowercase].
+Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], soft-mask [convert in-frame STOPs to lowercase].
 
-- `--stop_task convert`
+- `--stop_task soft-mask`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
 
-# Input files
+## Required input files
 
-## Assembly list
+### Protein queries
+
+- A FASTA file containing protein sequences, e.g:
+
+```
+>ADI48253.1 putative Rep [Circoviridae TM-6c]
+MQSVNWCFTLNNYTNEDVNKLKQVKCRYICLGFEVGDKKQTPHIQGFIQFEKKVRLSVWKKINKKIHAEI
+MKGTIEQAINYCKKSGTFEERGEIIKMGERRDLKEAKKKCAEVGLRAITDCESTYNLQVIRNCQIMLEYH
+EKERDFKPEVIWIYGESGAGKTKYISEKCAEVDTYWKDATKWWNGYDRHEITVMDDFRASNMKMNELLKL
+IDRYPHRVEIKGGFRQMLSKKIYISSIMHPKDVYNLPEEPVKQLLRRIDTIIKI
+
+>NP_042987.1 Rep [Human betaherpesvirus 6A]
+MFSIINPSDDFWTKDKYIMLTIKGPMEWEAEIPGISTDFFCKFSNVSVPHFRDMHSPGAPDIKWITACTK
+MIDVILNYWNNKTAVPTPAKWYAQAENKAGRPSLILLIALDGIPSATIGKHTTEIRGVLIKDFFDGNAPK
+IDDWCTYAKTKKNGGGTQVFSLSYIPFALLQIIRPQFQWAWTNINELGDVCDEIHRKHIISHFNKKPNVK
+LMLFPKDGINGISLKSKFLGTIEWLSDLGIVTEDAWIRRDIRSYMQLLTLTHGDVLIHRALSIAKKRIRA
+TRKAIDFIAHIDTDFQIYENPVYQLFCLQSFDPILAGTILYQWLSHRGGKKNTVSFIGPPGCGKSMLTGA
+ILENIPLHGILHGSLNTKNLRAYGQVLVLWWKDISINFDNFNIIKSLLGGQKIIFPINENDHVQIGPCPI
+IATSCVDIRSMVHSNLHKINLSQRVYNFTFDKVIPRNFPVIQKDDINQFLFWARNRSINCFIDYTVPKIL
+```
+
+### Assembly list
 
 - A text file containing ftp links for assemblies to process, e.g.:
 
@@ -116,7 +193,7 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 - Links to assemblies available from NCBI are on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites, e.g. `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
 
-## pHMM library
+### pHMM library
 
 - To generate a pHMM library with the latest version of [Pfam](https://www.ebi.ac.uk/interpro/download/Pfam), run the following:
 
@@ -131,7 +208,7 @@ hmmpress Pfam-A.hmm
 cd ..
 ```
 
-## NCBI nr proteins db
+### NCBI nr proteins db
 
 - For the reciprocal DIAMOND BLASTp stage, a local nr or clustered nr DIAMOND formatted database is recommended.
 - A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:

@@ -1,7 +1,8 @@
 # Collaboration with git
 
 # Make and track local version of remote
-git checkout -b NAME remote/origin/NAME
+git checkout -b NAME origin/NAME     # E.g. git ch -b docker origin/docker
+
 
 # "Start of day" - new feature branch
 git checkout dev && git pull origin dev
