@@ -139,10 +139,6 @@ Minimum percentage of cluster member sequence length that must overlap with the 
 
 - `--diamond_matrix BLOSUM45`
 
-CPUs per DIAMOND fork (default: 12). By default the forward DIAMOND search will be "forked" to run four assemblies in parallel, and each task will be allocated this number of CPUs. To set, recommend dividing the available CPUs by four. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process.
-
-- `--diamond_cpus 6`
-
 Maximum interval length allowed between features in the context FASTA (default: 1000).
 
 - `--interval 500`
