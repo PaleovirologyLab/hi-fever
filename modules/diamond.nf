@@ -1,6 +1,6 @@
 process diamond {
 
-    maxForks 4
+    maxForks params.diamond_forks
 
     input:
     tuple path(assembly), path(db)
@@ -12,7 +12,7 @@ process diamond {
 
     db=$db
     assembly=$assembly
-    cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / 4 : 1}')
+    cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / $params.diamond_forks : 1}')
 
     diamond blastx \
     --$params.diamond_mode \
