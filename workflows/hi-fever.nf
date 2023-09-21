@@ -1,3 +1,7 @@
+// Workflow specific parameters
+
+params.diamond_forks = "4"
+
 // Import modules
 
 include { build_db } from '../modules/build_db.nf'
