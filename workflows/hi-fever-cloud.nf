@@ -1,5 +1,8 @@
-// Import modules
+// Workflow specific params
 
+params.diamond_forks = "1"
+
+// Import modules
 
 // Run cloud workflow
 
@@ -10,6 +13,7 @@ workflow CLOUD {
 
         // Run workflow
         println "CLOUD EXECUTION SCRIPT"
+	println "$params.diamond_forks"
 
     }
 
