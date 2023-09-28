@@ -1,7 +1,5 @@
 // Workflow specific params
 
-params.diamond_forks = "1"
-
 // Import modules
 
 // Run cloud workflow
@@ -13,13 +11,12 @@ workflow CLOUD {
 
         // Run workflow
         println "CLOUD EXECUTION SCRIPT"
-	println "$params.diamond_forks"
 
     }
 
     else {
 
-        println ("Folder '$params.outdir' exists. Either remove it before rerunning, or rename to preserve the contents, e.g., YYYY-MM-DD-experiment_description")
+        println ("Folder '$params.outdir' already exists. Remove or rename it before rerunning, or use --outdir to direct workflow outputs to an alternative directory.")
 
     }
 
