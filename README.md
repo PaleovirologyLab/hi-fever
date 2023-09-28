@@ -115,7 +115,7 @@ Location of custom pHMM library for query domain annotation (default: domains).
 
 - `--phmms Pfam-32`
 
-Name of output directory. Note that rerunning the workflow without either renaming the previous output folder or resetting this parameter will lead to output overwriting (default: output).
+Name of output directory (default: output).
 
 - `--outdir 2023-07-31-16:24-herpesviridae_vs_tarsier`
 
@@ -130,6 +130,10 @@ Sequence identity threshold for clustering of the protein query (default: 0.95 =
 Minimum percentage of cluster member sequence length that must overlap with the representative sequence (default: 0.90 = 90%).
 
 - `--mmseqs_cover 0.80`
+
+DIAMOND fork count. By default Nextflow attempts to run all available forward DIAMOND tasks in parallel (one for each currently downloaded assembly), which can lead to overuse of memory resources and job termination. On local machines and clusters, it is therefore suggested to limit the number of parallel DIAMOND tasks (i.e., "forks") allowed at once. For setting the value, we recommend total cores / 12. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process (default: 4 for cluster workflow, and not set on cloud workflow as instances allow parallel processing).
+
+- `--diamond_forks 8`
 
 [DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default: very-sensitive).
 
