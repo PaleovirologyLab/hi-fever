@@ -28,7 +28,6 @@ workflow HIFEVER {
         def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
         def ftp_ch = Channel.fromPath(params.ftp_file)
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        python_path = Channel.value("$PWD/scripts/stop_convert_and_count.py")
         clustered_proteins = Channel.value("$PWD/virusdb/DB_clu_rep.fasta")
 
         // Build clustered DIAMOND query database from user supplied protein FASTA
@@ -58,8 +57,7 @@ workflow HIFEVER {
                                        intersect_domains_merge_extract.out.strict_fa_ch, \
                                        intersect_domains_merge_extract.out.context_fa_ch, \
                                        intersect_domains_merge_extract.out.context_coords_ch, \
-                                       clustered_proteins, \
-                                       python_path) | \
+                                       clustered_proteins) | \
                                        collect
 
         // Reciprocal DIAMOND
@@ -71,8 +69,7 @@ workflow HIFEVER {
                                       reciprocal_diamond.out.reciprocal_fasta_ch, \
                                       reciprocal_db_ch, \
                                       strict_fastas_collected, \
-                                      context_fastas_collected, \
-                                      python_path)
+                                      context_fastas_collected)
 
     }
 
