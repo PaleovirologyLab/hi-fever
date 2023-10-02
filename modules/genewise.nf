@@ -6,7 +6,6 @@ process genewise {
     path context_fasta
     path context_coords
     path clustered_proteins
-    path python_path
 
     output:
     path "*_genewise", optional: true
@@ -138,7 +137,7 @@ process genewise {
 
             # Post-processing of in-frame STOPs
 
-            python $python_path --task $params.stop_task --file wise_tmp/merged_results > "\${title}_genewise"
+            stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > "\${title}_genewise"
 
             # Cleanup
 

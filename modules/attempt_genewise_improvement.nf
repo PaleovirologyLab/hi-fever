@@ -8,7 +8,6 @@ process attempt_genewise_improvement {
     path reciprocal_db
     path strict_fastas_collected
     path context_fastas_collected
-    path python_path
 
     """
 
@@ -157,7 +156,7 @@ process attempt_genewise_improvement {
 
     # Post-processing of in-frame STOPs
 
-    python $python_path --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise.txt
+    stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results > post_reciprocal_genewise.txt
 
     # Merge both genewise outputs - for each locus keep the longest individual prediction
 
