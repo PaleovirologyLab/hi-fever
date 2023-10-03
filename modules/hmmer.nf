@@ -7,7 +7,7 @@ process hmmer {
     output:
     path "query_domains.hmmer", emit: query_domains_ch
     publishDir "query_domains"
-    
+
     """
 
     mkdir tmp
