@@ -1,6 +1,6 @@
 process download_assemblies {
 
-    maxForks 8
+    maxForks 10
 
     input:
     path ftp_dir
