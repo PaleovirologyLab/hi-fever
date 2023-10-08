@@ -1,6 +1,6 @@
 // Workflow specific parameters
 
-params.diamond_forks = "1"
+params.diamond_forks = "5"
 
 // Import modules
 
@@ -40,7 +40,7 @@ workflow CLOUD {
         fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
         // Get stats about downloaded assembly files
-        assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "$params.outdir")
+        assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "gs://hifeverbucket/$params.outdir")
 
         // Run main EVE search, annotate potential domains, and extract FASTAs
         diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
