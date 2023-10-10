@@ -29,7 +29,7 @@ Clone the repo, e.g., with GitHub CLI:
 gh repo clone Paleovirology/hi-fever
 ```
 
-To run with presets, ensure the following are in your working directory:
+To run with presets, ensure the following are in the data directory:
 
 >`protein_query.fasta` [[more information]](#protein-queries)
 
@@ -94,26 +94,26 @@ cd ..
 Run the workflow:
 
 ```
-nextflow main.nf -with-docker hi-fever --entry CLOUD
+nextflow main.nf -with-docker hi-fever
 ```
 
 ## Optional parameters and example inputs
 
-Workflow to run, intended either for local machine/cluster (LOCAL) or for cloud (CLOUD) (default: LOCAL).
+Workflow to run, intended for either single cluster/cloud nodes (LOCAL) or for cloud batch services (BATCH) (default: LOCAL).
 
-- `--entry CLOUD`
+- `--entry BATCH`
 
 Custom protein query file (default: protein_query.fasta).
 
-- `--query_file_aa circoviridae.fa`
+- `--query_file_aa data/circoviridae.fa`
 
 Custom ftp file (default: ftp_list.txt).
 
-- `--ftp_file assemblies.txt`
+- `--ftp_file data/assemblies.txt`
 
 Location of custom pHMM library for query domain annotation (default: domains).
 
-- `--phmms Pfam-32`
+- `--phmms data/Pfam-32`
 
 Name of output directory (default: output).
 
@@ -121,7 +121,7 @@ Name of output directory (default: output).
 
 Custom reciprocal BLASTp database (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
 
-- `--reciprocal_db nr.dmnd`
+- `--reciprocal_db data/nr.dmnd`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -208,13 +208,12 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 ```
 conda activate hi-fever
-mkdir domains; cd domains
+mkdir data/domains; cd data/domains
 wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
 gunzip Pfam-A.hmm.gz
 # Replace space characters in model description lines, as these are column delimiters in the output table.
 sed -i '/^DESC/ s/ /_/g; s/__/  /' Pfam-A.hmm
 hmmpress Pfam-A.hmm
-cd ..
 ```
 
 ### NCBI nr proteins db
