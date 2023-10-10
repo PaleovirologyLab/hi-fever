@@ -6,7 +6,8 @@ process build_db {
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
     path "virusdb.dmnd", emit: vir_db_ch
-    publishDir "virusdb"
+    publishDir "${params.outdir}/virusdb", mode: "copy"
+
 
     """
 
