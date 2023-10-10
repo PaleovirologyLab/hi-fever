@@ -21,7 +21,7 @@ nextflow.enable.dsl=2
 // Import workflow scripts
 
 include { HIFEVER } from './workflows/hi-fever.nf'
-include { CLOUD } from './workflows/hi-fever-cloud.nf'
+include { BATCH } from './workflows/hi-fever-batch.nf'
 
 //  Workflow definition
 
@@ -30,7 +30,7 @@ workflow {
     HIFEVER ()
     }
 
-    else if ( "$params.entry" == "CLOUD") {
-    CLOUD ()
+    else if ( "$params.entry" == "BATCH") {
+    BATCH ()
     }
 }
