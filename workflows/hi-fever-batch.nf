@@ -1,6 +1,7 @@
 // Workflow specific parameters
 
 params.diamond_forks = "5"
+params.bucket_name = "hifeverbucket"
 
 // Import modules
 
@@ -28,7 +29,7 @@ workflow BATCH {
         def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
         def ftp_ch = Channel.fromPath(params.ftp_file)
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        clustered_proteins = Channel.value("gs://hifeverbucket/${params.outdir}/virusdb/DB_clu_rep.fasta")
+        clustered_proteins = Channel.value("gs://${params.bucket_name}/${params.outdir}/virusdb/DB_clu_rep.fasta")
 
         // Build clustered DIAMOND query database from user supplied protein FASTA
         build_db(query_ch)
@@ -40,7 +41,7 @@ workflow BATCH {
         fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
         // Get stats about downloaded assembly files
-        assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "gs://hifeverbucket/$params.outdir")
+        assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "gs://${params.bucket_name}/${params.outdir}")
 
         // Run main EVE search, annotate potential domains, and extract FASTAs
         diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))

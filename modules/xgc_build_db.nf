@@ -9,7 +9,7 @@ process build_db {
     output:
     path "DB_clu_rep.fasta", emit: clust_ch
     tuple path("virusdb.dmnd"), val(true), emit: vir_db_ch
-    publishDir "gs://hifeverbucket/${params.outdir}/virusdb", mode: "copy"
+    publishDir "gs://${params.bucket_name}/${params.outdir}/virusdb", mode: "copy"
 
     """
 
