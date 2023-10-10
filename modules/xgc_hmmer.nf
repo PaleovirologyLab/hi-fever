@@ -9,7 +9,7 @@ process hmmer {
 
     output:
     path "query_domains.hmmer", emit: query_domains_ch
-    publishDir "gs://hifeverbucket/${params.outdir}/query_domains", mode: "copy"
+    publishDir "gs://${params.bucket_name}/${params.outdir}/query_domains", mode: "copy"
 
     """
 
