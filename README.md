@@ -99,9 +99,13 @@ nextflow main.nf -with-docker hi-fever
 
 ## Optional parameters and example inputs
 
-Workflow to run, intended for either single cluster/cloud nodes (LOCAL) or for cloud batch services (BATCH) (default: LOCAL).
+Workflow to run, LOCAL: for single nodes on clusters or cloud, BATCH: for cloud batch services (default: LOCAL).
 
 - `--entry BATCH`
+
+For cloud batch only, specify the cloud storage bucket.
+
+- `--bucket_name my-bucket`
 
 Custom protein query file (default: protein_query.fasta).
 
