@@ -28,7 +28,7 @@ workflow HIFEVER {
         def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
         def ftp_ch = Channel.fromPath(params.ftp_file)
         def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-        clustered_proteins = Channel.value("$PWD/virusdb/DB_clu_rep.fasta")
+        clustered_proteins = Channel.value("$PWD/${params.outdir}/virusdb/DB_clu_rep.fasta")
 
         // Build clustered DIAMOND query database from user supplied protein FASTA
         build_db(query_ch)
