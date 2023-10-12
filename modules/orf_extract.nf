@@ -5,8 +5,7 @@ process orf_extract {
     path strict_coords
 
     output:
-    path "context_ORFs.txt", optional: true
-    path "intersected_ORFs.txt", optional: true
+    path "*_intersected_ORFs.txt", optional: true
 
     """
 
@@ -18,6 +17,8 @@ process orf_extract {
     if [ -s $context_fasta ];
 
         then
+
+            title=\$(readlink -f $context_fasta | sed 's/.*\\///; s/_genomic.fna_context.fasta//')
 
             cat $context_fasta | \
             sed 's/:/-/' | \
@@ -35,9 +36,8 @@ process orf_extract {
             # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
             bedtools intersect -a $strict_coords -b context_ORFs.txt -wo -sorted | \
-            awk '{print \$1, \$2, \$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' | \
-            tr -s ' ' '\t' > \
-            intersected_ORFs.txt
+            awk 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
+            \${title}_intersected_ORFs.txt
 
         else
 
