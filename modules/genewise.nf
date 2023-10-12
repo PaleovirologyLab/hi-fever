@@ -31,7 +31,7 @@ process genewise {
             # Generate query-target pairing file for strict FASTA, protein accessions to extract, file for later intersection with context coordinates, and genomic coordinates file
             # First cut protein, contig, strict coords start and end -> send to matched_pairs
 
-            cut -f1,4-6 $annotated_tsv | \
+            cut -f1,5-7 $annotated_tsv | \
             uniq | \
             tee >(cut -f1 | sort | uniq > wise_tmp/prot_headers) | \
             tee >(awk 'BEGIN{OFS="\t"} {print \$2, \$3, \$4, \$1}' | sort -k1,1 -k2,2n > wise_tmp/intersection_bed) | \
