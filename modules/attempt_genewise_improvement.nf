@@ -9,10 +9,14 @@ process attempt_genewise_improvement {
     path strict_fastas_collected
     path context_fastas_collected
 
+    output:
+    path "genewise.txt"
+    publishDir "${params.outdir}", mode: "move", pattern: "genewise.txt"
+
     """
 
     export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
-    mkdir wise_tmp
+    mkdir wise_tmp wise_tmp_nt wise_tmp_nt2 wise_tmp_aa
 
     # Generate table of original best proteins per locus
 
@@ -30,7 +34,6 @@ process attempt_genewise_improvement {
     # Find loci whose best hit has changed & get nuc + protein identifiers + genomic coords & file to intersect with context coords
 
     comm -13 wise_tmp/original_pairs wise_tmp/reciprocal_pairs | \
-    tee >(cut -f1 > wise_tmp/nuc_headers) | \
     tee >(cut -f2 | sort | uniq > wise_tmp/protein_accessions) | \
     tee >(cut -f1 | sed 's/:/\t/; s/-/\t/' > wise_tmp/genomic_coords) | \
     tee >(sed 's/:/\t/; s/-/\t/' | sort -k1,1 -k2,2n > wise_tmp/intersection_bed) > \
@@ -42,12 +45,11 @@ process attempt_genewise_improvement {
 
     # Extract new best proteins into individual files
 
-    while read line
-        do
-            echo \$line | \
-            seqtk subseq $reciprocal_fasta - > \
-            wise_tmp/\$line
-        done < wise_tmp/protein_accessions
+    seqtk subseq $reciprocal_fasta wise_tmp/protein_accessions | \
+    sed 's/ .*//' > \
+    wise_tmp/temp.fa
+
+    awk '/^>/ { if (name) close(name); name="wise_tmp_aa/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
     rm "\$(readlink -f $reciprocal_fasta)"
 
@@ -57,12 +59,7 @@ process attempt_genewise_improvement {
     sed 's/ .*//' > \
     wise_tmp/temp.fa
 
-    while read line
-        do
-            echo \$line | \
-            seqtk subseq wise_tmp/temp.fa - > \
-            wise_tmp/\$line
-        done < wise_tmp/nuc_headers
+    awk '/^>/ { if (name) close(name); name="wise_tmp_nt/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
     # GeneWise operations, strict FASTA
 
@@ -70,7 +67,7 @@ process attempt_genewise_improvement {
         do
             query=\$(echo \$line | cut -f2 -d ' ')
             target=\$(echo \$line | cut -f1 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp_aa/\$query wise_tmp_nt/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -105,19 +102,13 @@ process attempt_genewise_improvement {
     # Intersect ranges, keep various outputs from the context ranges we need
 
     bedtools intersect -a wise_tmp/intersection_bed -b wise_tmp/all_context_bed -wb -f 1 -sorted | \
-    tee >(awk 'BEGIN{OFS="\t"} {print \$5":"\$6"-"\$7}' > wise_tmp/nuc_headers) | \
     tee >(cut -f5-7 > wise_tmp/genomic_coords) | \
     awk 'BEGIN{OFS="\t"} {print \$5":"\$6"-"\$7, \$4}' > \
     wise_tmp/matched_pairs
 
     # Extract those sequences
 
-    while read line
-        do
-            echo \$line | \
-            seqtk subseq wise_tmp/temp.fa - > \
-            wise_tmp/\$line
-        done < wise_tmp/nuc_headers
+    awk '/^>/ { if (name) close(name); name="wise_tmp_nt2/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
     # GeneWise operations, context FASTA
 
@@ -125,7 +116,7 @@ process attempt_genewise_improvement {
         do
             query=\$(echo \$line | cut -f2 -d ' ')
             target=\$(echo \$line | cut -f1 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp_aa/\$query wise_tmp_nt2/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -147,9 +138,11 @@ process attempt_genewise_improvement {
     # Intersect and concatenate results (keep strict if not covered by context, otherwise keep context)
 
     # First report strict predictions not encompassed by a context prediction
+
     bedtools intersect -v -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wa > wise_tmp/merged_results
 
     # Second find strict predictions encompassed by context predictions, report latter
+
     bedtools intersect -a wise_tmp/output1 -b wise_tmp/output2 -f 1 -wb | \
     awk 'BEGIN{OFS="\t"} {print \$15, \$16, \$17, \$18, \$5, \$20, \$21, \$22, \$23, \$24, \$25, \$26, \$27, \$28}' >> \
     wise_tmp/merged_results
@@ -167,8 +160,7 @@ process attempt_genewise_improvement {
 
     # Cleanup
 
-    rm -r wise_tmp
-    rm "\$(readlink -f pre_reciprocal_genewise.txt)"  post_reciprocal_genewise.txt
+    rm -r wise_tmp*
 
     """
 

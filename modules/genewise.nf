@@ -21,19 +21,12 @@ process genewise {
             title=\$(readlink -f $strict_fasta | sed 's/.*\\///; s/_genomic.fna_strict.fasta//')
             protein_db=$clustered_proteins
             export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
-            mkdir wise_tmp
+            mkdir wise_tmp wise_tmp_nt wise_tmp_nt2 wise_tmp_aa
 
             # Reformat and extract strict nucleotide FASTA, one per file
 
             sed 's/ .*//' < $strict_fasta > wise_tmp/temp.fa
-            grep ">" wise_tmp/temp.fa | sed 's/>//' > wise_tmp/nuc_headers
-
-            while read line
-                do
-                    echo \$line | \
-                    seqtk subseq wise_tmp/temp.fa - > \
-                    wise_tmp/\$line
-                done < wise_tmp/nuc_headers
+            awk '/^>/ { if (name) close(name); name="wise_tmp_nt/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
             # Generate query-target pairing file for strict FASTA, protein accessions to extract, file for later intersection with context coordinates, and genomic coordinates file
             # First cut protein, contig, strict coords start and end -> send to matched_pairs
@@ -48,12 +41,11 @@ process genewise {
 
             # Extract protein FASTA, one per file
 
-            while read line
-                do
-                    echo \$line | \
-                    seqtk subseq \$protein_db - > \
-                    wise_tmp/\$line
-                done < wise_tmp/prot_headers
+            seqtk subseq \$protein_db wise_tmp/prot_headers | \
+            sed 's/ .*//' > \
+            wise_tmp/temp.fa
+
+            awk '/^>/ { if (name) close(name); name="wise_tmp_aa/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
             # GeneWise operations, strict FASTA
 
@@ -61,7 +53,7 @@ process genewise {
                 do
                     query=\$(echo \$line | cut -f1 -d ' ')
                     target=\$(echo \$line | cut -f2 -d ' ')
-                    genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+                    genewise wise_tmp_aa/\$query wise_tmp_nt/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
                     grep -v ">\\|Bits   Query" | \
                     awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
                     sed 's/DIVIDE_STRING/\t/g' | \
@@ -83,14 +75,7 @@ process genewise {
             # Reformat and extract context nucleotide FASTA, one per file
 
             sed 's/ .*//' < $context_fasta > wise_tmp/temp.fa
-            grep ">" wise_tmp/temp.fa | sed 's/>//' > wise_tmp/nuc_headers
-
-            while read line
-                do
-                    echo \$line | \
-                    seqtk subseq wise_tmp/temp.fa - > \
-                    wise_tmp/\$line
-                done < wise_tmp/nuc_headers
+            awk '/^>/ { if (name) close(name); name="wise_tmp_nt2/" substr(\$0,2); print > name; next } { print >> name }' wise_tmp/temp.fa
 
             # Generate query-target pairing file for context FASTA
 
@@ -106,7 +91,7 @@ process genewise {
                 do
                     query=\$(echo \$line | cut -f1 -d ' ')
                     target=\$(echo \$line | cut -f2 -d ' ')
-                    genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+                    genewise wise_tmp_aa/\$query wise_tmp_nt2/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
                     grep -v ">\\|Bits   Query" | \
                     awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
                     sed 's/DIVIDE_STRING/\t/g' | \
@@ -141,7 +126,7 @@ process genewise {
 
             # Cleanup
 
-            rm -r wise_tmp
+            rm -r wise_tmp*
 
         else
 
