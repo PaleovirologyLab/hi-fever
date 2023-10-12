@@ -11,7 +11,7 @@ process attempt_genewise_improvement {
 
     output:
     path "genewise.txt"
-    publishDir "${params.outdir}", mode: "move", pattern: "genewise.txt"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "genewise.txt"
 
     """
 
