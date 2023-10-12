@@ -37,6 +37,7 @@ include { orf_extract } from '../modules/orf_extract.nf'
 include { genewise } from '../modules/genewise.nf'
 include { reciprocal_diamond } from '../modules/reciprocal_diamond.nf'
 include { attempt_genewise_improvement } from '../modules/attempt_genewise_improvement.nf'
+include { publish } from '../modules/publish.nf'
 
 // Run local workflow
 
@@ -66,6 +67,7 @@ workflow HIFEVER {
     intersect_domains_merge_extract(diamond_out.combine(hmmer.out.query_domains_ch))
     strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
     context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
+    locus_assembly_map_collected = intersect_domains_merge_extract.out.locus_assembly_map_ch.collect()
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
     orf_extract (intersect_domains_merge_extract.out.context_fa_ch, \
@@ -89,5 +91,8 @@ workflow HIFEVER {
                                 reciprocal_db_ch, \
                                 strict_fastas_collected, \
                                 context_fastas_collected)
+
+    // Produce final outputs
+    publish (strict_fastas_collected, context_fastas_collected, locus_assembly_map_collected)
 
 }
