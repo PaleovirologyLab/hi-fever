@@ -9,6 +9,7 @@ process intersect_domains_merge_extract {
     path "matches.dmnd.annot.tsv", emit: annot_tsv_ch
     path "*_strict.fasta", emit: strict_fa_ch
     path "*_context.fasta", emit: context_fa_ch
+    path "*_locus_assembly_map.txt", emit: locus_assembly_map_ch
 
     """
 
@@ -46,6 +47,7 @@ process intersect_domains_merge_extract {
 
     dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
     filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
+    assemblyID=\$(echo \$filename | sed 's/_genomic.*//')
 
     # First coordinate range extraction (strictly overlapping alignments)
 
@@ -66,6 +68,11 @@ process intersect_domains_merge_extract {
     sed 's/ .*//; s/>//; s/[:-]/\t/g' | \
     sort -k1,1 -k2,2n > \
     context_coords.bed
+
+    # Generate assemblyID to locus dictionary
+
+    awk -v var="\$assemblyID" 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, var}' strict_coords.bed > \
+    "\${assemblyID}_locus_assembly_map.txt"
 
     # Clean up database files
 
