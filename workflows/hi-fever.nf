@@ -60,7 +60,7 @@ workflow HIFEVER {
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
     // Get stats about downloaded assembly files
-    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "$params.outdir")
+    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "${params.outdir}/sql")
 
     // Run main EVE search, annotate potential domains, and extract FASTAs
     diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
@@ -68,10 +68,11 @@ workflow HIFEVER {
     strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
     context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
     locus_assembly_map_collected = intersect_domains_merge_extract.out.locus_assembly_map_ch.collect()
+    annotated_hits_collected = intersect_domains_merge_extract.out.annot_tsv_ch.collect()
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
-    orf_extract (intersect_domains_merge_extract.out.context_fa_ch, \
-                intersect_domains_merge_extract.out.strict_coords_ch)
+    orfs_collected = orf_extract (intersect_domains_merge_extract.out.context_fa_ch, \
+                intersect_domains_merge_extract.out.strict_coords_ch).collect()
 
     // Frameshift and STOP aware reconstruction of EVE sequences
     collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, \
@@ -93,6 +94,10 @@ workflow HIFEVER {
                                 context_fastas_collected)
 
     // Produce final outputs
-    publish (strict_fastas_collected, context_fastas_collected, locus_assembly_map_collected)
+    publish (strict_fastas_collected, \
+            context_fastas_collected, \
+            locus_assembly_map_collected, \
+            orfs_collected, \
+            annotated_hits_collected)
 
 }
