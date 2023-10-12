@@ -13,6 +13,7 @@ process orf_extract {
     # Checks input file for content, if yes:
     # Extracts ORFs between START and STOP codons. STOP is NOT included in reported ORF coordinates.
     # Converts ORF output to the original genomic loci in ascending BED format, with predicted protein sequence.
+    # Removes redundancy (ORFs found in overlapping context FASTAs)
 
     if [ -s $context_fasta ];
 
@@ -26,7 +27,8 @@ process orf_extract {
             tr -s ' ' '\t' | \
             paste -sd '\t\n' | \
             awk 'BEGIN{OFS="\t"}; {if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' | \
-            sort -k1,1 -k2,2n > \
+            sort -k1,1 -k2,2n | \
+            uniq > \
             context_ORFs.txt
 
             # Intersect context ORFs with strict feature coordinates, reports:
