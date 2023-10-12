@@ -6,7 +6,7 @@ process intersect_domains_merge_extract {
     output:
     path "strict_coords.bed", emit: strict_coords_ch
     path "context_coords.bed", emit: context_coords_ch
-    path "matches.dmnd.annot.tsv", emit: annot_tsv_ch
+    path "*_matches.dmnd.annot.tsv", emit: annot_tsv_ch
     path "*_strict.fasta", emit: strict_fa_ch
     path "*_context.fasta", emit: context_fa_ch
     path "*_locus_assembly_map.txt", emit: locus_assembly_map_ch
@@ -16,6 +16,12 @@ process intersect_domains_merge_extract {
     # Wait for domain annotation file
 
     domain_annotation=$domain_annotation
+
+    # Prepare variables
+
+    dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
+    filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
+    assemblyID=\$(echo \$filename | sed 's/_genomic.*//')
 
     # Intersect domains & produce non-redundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
@@ -37,17 +43,11 @@ process intersect_domains_merge_extract {
     sort -k16,16n -k11,11nr | \
     sort -u -k16,16n | \
     bedtools intersect -a - -b strict_coords.bed -loj -sorted | \
-    awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
+    awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17":"\$18"-"\$19, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
     sort -k1,1 -k2,2n | \
     bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
-    cut -f18 --complement > \
-    matches.dmnd.annot.tsv
-
-    # Prepare variables
-
-    dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
-    filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
-    assemblyID=\$(echo \$filename | sed 's/_genomic.*//')
+    cut -f19 --complement > \
+    \${assemblyID}_matches.dmnd.annot.tsv
 
     # First coordinate range extraction (strictly overlapping alignments)
 
