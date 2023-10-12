@@ -8,7 +8,7 @@ process reciprocal_diamond {
     path "reciprocal-matches.dmnd.tsv", emit: reciprocal_hits_ch
     path "pre_reciprocal_genewise.txt", emit: original_genewise_ch
     path "best_reciprocals.fasta", emit: reciprocal_fasta_ch
-    publishDir "$params.outdir", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
 
     """
 
