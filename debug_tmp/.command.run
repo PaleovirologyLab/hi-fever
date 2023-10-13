@@ -1,0 +1,530 @@
+#!/bin/bash
+# NEXTFLOW TASK: HIFEVER:attempt_genewise_improvement (1)
+set -e
+set -u
+NXF_DEBUG=${NXF_DEBUG:=0}; [[ $NXF_DEBUG > 1 ]] && set -x
+NXF_ENTRY=${1:-nxf_main}
+
+nxf_tree() {
+    local pid=$1
+
+    declare -a ALL_CHILDREN
+    while read P PP;do
+        ALL_CHILDREN[$PP]+=" $P"
+    done < <(ps -e -o pid= -o ppid=)
+
+    pstat() {
+        local x_pid=$1
+        local STATUS=$(2> /dev/null < /proc/$1/status grep -E 'Vm|ctxt')
+
+        if [ $? = 0 ]; then
+        local  x_vsz=$(echo "$STATUS" | grep VmSize | awk '{print $2}' || echo -n '0')
+        local  x_rss=$(echo "$STATUS" | grep VmRSS | awk '{print $2}' || echo -n '0')
+        local x_peak=$(echo "$STATUS" | grep -E 'VmPeak|VmHWM' | sed 's/^.*:\s*//' | sed 's/[\sa-zA-Z]*$//' | tr '\n' ' ' || echo -n '0 0')
+        local x_pmem=$(awk -v rss=$x_rss -v mem_tot=$mem_tot 'BEGIN {printf "%.0f", rss/mem_tot*100*10}' || echo -n '0')
+        local vol_ctxt=$(echo "$STATUS" | grep '\bvoluntary_ctxt_switches' | awk '{print $2}' || echo -n '0')
+        local inv_ctxt=$(echo "$STATUS" | grep '\bnonvoluntary_ctxt_switches' | awk '{print $2}' || echo -n '0')
+        cpu_stat[x_pid]="$x_pid $x_pmem $x_vsz $x_rss $x_peak $vol_ctxt $inv_ctxt"
+        fi
+    }
+
+    pwalk() {
+        pstat $1
+        for i in ${ALL_CHILDREN[$1]:=}; do pwalk $i; done
+    }
+
+    pwalk $1
+}
+
+nxf_stat() {
+    cpu_stat=()
+    nxf_tree $1
+
+    declare -a sum=(0 0 0 0 0 0 0 0)
+    local pid
+    local i
+    for pid in "${!cpu_stat[@]}"; do
+        local row=(${cpu_stat[pid]})
+        [ $NXF_DEBUG = 1 ] && echo "++ stat mem=${row[*]}"
+        for i in "${!row[@]}"; do
+        if [ $i != 0 ]; then
+            sum[i]=$((sum[i]+row[i]))
+        fi
+        done
+    done
+
+    [ $NXF_DEBUG = 1 ] && echo -e "++ stat SUM=${sum[*]}"
+
+    for i in {1..7}; do
+        if [ ${sum[i]} -lt ${cpu_peak[i]} ]; then
+            sum[i]=${cpu_peak[i]}
+        else
+            cpu_peak[i]=${sum[i]}
+        fi
+    done
+
+    [ $NXF_DEBUG = 1 ] && echo -e "++ stat PEAK=${sum[*]}\n"
+    nxf_stat_ret=(${sum[*]})
+}
+
+nxf_mem_watch() {
+    set -o pipefail
+    local pid=$1
+    local trace_file=.command.trace
+    local count=0;
+    declare -a cpu_stat=(0 0 0 0 0 0 0 0)
+    declare -a cpu_peak=(0 0 0 0 0 0 0 0)
+    local mem_tot=$(< /proc/meminfo grep MemTotal | awk '{print $2}')
+    local timeout
+    local DONE
+    local STOP=''
+
+    [ $NXF_DEBUG = 1 ] && nxf_sleep 0.2 && ps fx
+
+    while true; do
+        nxf_stat $pid
+        if [ $count -lt 10 ]; then timeout=1;
+        elif [ $count -lt 120 ]; then timeout=5;
+        else timeout=30;
+        fi
+        read -t $timeout -r DONE || true
+        [[ $DONE ]] && break
+        if [ ! -e /proc/$pid ]; then
+            [ ! $STOP ] && STOP=$(nxf_date)
+            [ $(($(nxf_date)-STOP)) -gt 10000 ] && break
+        fi
+        count=$((count+1))
+    done
+
+    echo "%mem=${nxf_stat_ret[1]}"      >> $trace_file
+    echo "vmem=${nxf_stat_ret[2]}"      >> $trace_file
+    echo "rss=${nxf_stat_ret[3]}"       >> $trace_file
+    echo "peak_vmem=${nxf_stat_ret[4]}" >> $trace_file
+    echo "peak_rss=${nxf_stat_ret[5]}"  >> $trace_file
+    echo "vol_ctxt=${nxf_stat_ret[6]}"  >> $trace_file
+    echo "inv_ctxt=${nxf_stat_ret[7]}"  >> $trace_file
+}
+
+nxf_write_trace() {
+    echo "nextflow.trace/v2"           > $trace_file
+    echo "realtime=$wall_time"         >> $trace_file
+    echo "%cpu=$ucpu"                  >> $trace_file
+    echo "rchar=${io_stat1[0]}"        >> $trace_file
+    echo "wchar=${io_stat1[1]}"        >> $trace_file
+    echo "syscr=${io_stat1[2]}"        >> $trace_file
+    echo "syscw=${io_stat1[3]}"        >> $trace_file
+    echo "read_bytes=${io_stat1[4]}"   >> $trace_file
+    echo "write_bytes=${io_stat1[5]}"  >> $trace_file
+}
+
+nxf_trace_mac() {
+    local start_millis=$(nxf_date)
+
+    /bin/bash -ue /home/user/Desktop/Cormac/hi-fever/work/82/eb2417837cb26a724081d6ed8d7379/.command.sh
+
+    local end_millis=$(nxf_date)
+    local wall_time=$((end_millis-start_millis))
+    local ucpu=''
+    local io_stat1=('' '' '' '' '' '')
+    nxf_write_trace
+}
+
+nxf_fd() {
+    local FD=11
+    while [ -e /proc/$$/fd/$FD ]; do FD=$((FD+1)); done
+    echo $FD
+}
+
+nxf_trace_linux() {
+    local pid=$$
+    command -v ps &>/dev/null || { >&2 echo "Command 'ps' required by nextflow to collect task metrics cannot be found"; exit 1; }
+    local num_cpus=$(< /proc/cpuinfo grep '^processor' -c)
+    local tot_time0=$(grep '^cpu ' /proc/stat | awk '{sum=$2+$3+$4+$5+$6+$7+$8+$9; printf "%.0f",sum}')
+    local cpu_time0=$(2> /dev/null < /proc/$pid/stat awk '{printf "%.0f", ($16+$17)*10 }' || echo -n 'X')
+    local io_stat0=($(2> /dev/null < /proc/$pid/io sed 's/^.*:\s*//' | head -n 6 | tr '\n' ' ' || echo -n '0 0 0 0 0 0'))
+    local start_millis=$(nxf_date)
+    trap 'kill $mem_proc' ERR
+    
+    /bin/bash -ue /home/user/Desktop/Cormac/hi-fever/work/82/eb2417837cb26a724081d6ed8d7379/.command.sh &
+    local task=$!
+
+    mem_fd=$(nxf_fd)
+    eval "exec $mem_fd> >(nxf_mem_watch $task)"
+    local mem_proc=$!
+
+    wait $task
+
+    local end_millis=$(nxf_date)
+    local tot_time1=$(grep '^cpu ' /proc/stat | awk '{sum=$2+$3+$4+$5+$6+$7+$8+$9; printf "%.0f",sum}')
+    local cpu_time1=$(2> /dev/null < /proc/$pid/stat awk '{printf "%.0f", ($16+$17)*10 }' || echo -n 'X')
+    local ucpu=$(awk -v p1=$cpu_time1 -v p0=$cpu_time0 -v t1=$tot_time1 -v t0=$tot_time0 -v n=$num_cpus 'BEGIN { pct=(p1-p0)/(t1-t0)*100*n; printf("%.0f", pct>0 ? pct : 0) }' )
+
+    local io_stat1=($(2> /dev/null < /proc/$pid/io sed 's/^.*:\s*//' | head -n 6 | tr '\n' ' ' || echo -n '0 0 0 0 0 0'))
+    local i
+    for i in {0..5}; do
+        io_stat1[i]=$((io_stat1[i]-io_stat0[i]))
+    done
+
+    local wall_time=$((end_millis-start_millis))
+    [ $NXF_DEBUG = 1 ] && echo "+++ STATS %CPU=$ucpu TIME=$wall_time I/O=${io_stat1[*]}"
+
+    echo "nextflow.trace/v2"           > $trace_file
+    echo "realtime=$wall_time"         >> $trace_file
+    echo "%cpu=$ucpu"                  >> $trace_file
+    echo "rchar=${io_stat1[0]}"        >> $trace_file
+    echo "wchar=${io_stat1[1]}"        >> $trace_file
+    echo "syscr=${io_stat1[2]}"        >> $trace_file
+    echo "syscw=${io_stat1[3]}"        >> $trace_file
+    echo "read_bytes=${io_stat1[4]}"   >> $trace_file
+    echo "write_bytes=${io_stat1[5]}"  >> $trace_file
+
+    [ -e /proc/$mem_proc ] && eval "echo 'DONE' >&$mem_fd" || true
+    wait $mem_proc 2>/dev/null || true
+    while [ -e /proc/$mem_proc ]; do nxf_sleep 0.1; done
+}
+
+nxf_trace() {
+    local trace_file=.command.trace
+    touch $trace_file
+    if [[ $(uname) = Darwin ]]; then
+        nxf_trace_mac
+    else
+        nxf_trace_linux
+    fi
+}
+
+nxf_sleep() {
+  sleep $1 2>/dev/null || sleep 1;
+}
+
+nxf_date() {
+    local ts=$(date +%s%3N);
+    if [[ ${#ts} == 10 ]]; then echo ${ts}000
+    elif [[ $ts == *%3N ]]; then echo ${ts/\%3N/000}
+    elif [[ $ts == *3N ]]; then echo ${ts/3N/000}
+    elif [[ ${#ts} == 13 ]]; then echo $ts
+    else echo "Unexpected timestamp value: $ts"; exit 1
+    fi
+}
+
+nxf_env() {
+    echo '============= task environment ============='
+    env | sort | sed "s/\(.*\)AWS\(.*\)=\(.\{6\}\).*/\1AWS\2=\3xxxxxxxxxxxxx/"
+    echo '============= task output =================='
+}
+
+nxf_kill() {
+    declare -a children
+    while read P PP;do
+        children[$PP]+=" $P"
+    done < <(ps -e -o pid= -o ppid=)
+
+    kill_all() {
+        [[ $1 != $$ ]] && kill $1 2>/dev/null || true
+        for i in ${children[$1]:=}; do kill_all $i; done
+    }
+
+    kill_all $1
+}
+
+nxf_mktemp() {
+    local base=${1:-/tmp}
+    mkdir -p "$base"
+    if [[ $(uname) = Darwin ]]; then mktemp -d $base/nxf.XXXXXXXXXX
+    else TMPDIR="$base" mktemp -d -t nxf.XXXXXXXXXX
+    fi
+}
+
+nxf_fs_copy() {
+  local source=$1
+  local target=$2
+  local basedir=$(dirname $1)
+  mkdir -p $target/$basedir
+  cp -fRL $source $target/$basedir
+}
+
+nxf_fs_move() {
+  local source=$1
+  local target=$2
+  local basedir=$(dirname $1)
+  mkdir -p $target/$basedir
+  mv -f $source $target/$basedir
+}
+
+nxf_fs_rsync() {
+  rsync -rRl $1 $2
+}
+
+nxf_fs_rclone() {
+  rclone copyto $1 $2/$1
+}
+
+nxf_fs_fcp() {
+  fcp $1 $2/$1
+}
+
+on_exit() {
+    exit_status=${nxf_main_ret:=$?}
+    printf $exit_status > /home/user/Desktop/Cormac/hi-fever/work/82/eb2417837cb26a724081d6ed8d7379/.exitcode
+    set +u
+    [[ "$tee1" ]] && kill $tee1 2>/dev/null
+    [[ "$tee2" ]] && kill $tee2 2>/dev/null
+    [[ "$ctmp" ]] && rm -rf $ctmp || true
+    sync || true
+    exit $exit_status
+}
+
+on_term() {
+    set +e
+    [[ "$pid" ]] && nxf_kill $pid
+}
+
+nxf_launch() {
+    /bin/bash /home/user/Desktop/Cormac/hi-fever/work/82/eb2417837cb26a724081d6ed8d7379/.command.run nxf_trace
+}
+
+nxf_stage() {
+    true
+    # stage input files
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/fb2262ffa69ecfc773ab8be05f8981/pre_reciprocal_genewise.txt pre_reciprocal_genewise.txt
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/fb2262ffa69ecfc773ab8be05f8981/reciprocal-matches.dmnd.tsv reciprocal-matches.dmnd.tsv
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/fb2262ffa69ecfc773ab8be05f8981/best_reciprocals.fasta best_reciprocals.fasta
+    ln -s /home/user/Desktop/hi-fever/data/nr_clustered_wtaxa.dmnd nr_clustered_wtaxa.dmnd
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a1/845356ab02183745daaf6486a624c8/GCA_023065795.1_ASM2306579v1_genomic.fna_strict.fasta GCA_023065795.1_ASM2306579v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/0a/ee623c56bd14df564ea02be19168b3/GCA_000601435.1_P_lyc_v1_genomic.fna_strict.fasta GCA_000601435.1_P_lyc_v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b8/31ca20a51fd9e7504682652137c90a/GCA_026225775.1_INECOL_Bpal_1.0_genomic.fna_strict.fasta GCA_026225775.1_INECOL_Bpal_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d2/1bda4d2388982d01d256892a00442d/GCA_013400295.1_ASM1340029v1_genomic.fna_strict.fasta GCA_013400295.1_ASM1340029v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/97/1ea32c2107b7fc2ce5cc15bcbb2618/GCA_025773905.1_ASM2577390v1_genomic.fna_strict.fasta GCA_025773905.1_ASM2577390v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cc/202f41091b1d3ebaf3b71bbbaec790/GCA_004802705.1_ASM480270v1_genomic.fna_strict.fasta GCA_004802705.1_ASM480270v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/18/8d226aa579b9fd1145138fb5c3d2f7/GCA_016432905.1_ASM1643290v1_genomic.fna_strict.fasta GCA_016432905.1_ASM1643290v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3d/3995115f3d1bf25d4eca1d28ad03a5/GCA_000006255.1_Postia_placenta_V1.0_genomic.fna_strict.fasta GCA_000006255.1_Postia_placenta_V1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/1a/64afe5e6fe2a7a49eafe93fb91d4b6/GCA_014048405.2_ASM1404840v2_genomic.fna_strict.fasta GCA_014048405.2_ASM1404840v2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bf/168f5c44ac81a486f17f8137161fc0/GCA_005959805.1_ASM595980v1_genomic.fna_strict.fasta GCA_005959805.1_ASM595980v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6e/e2642e1cd2d8074fa12da3ed1af073/GCA_004348175.1_PNOVO_Noble_KM_genomic.fna_strict.fasta GCA_004348175.1_PNOVO_Noble_KM_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b3/a36609ae6dfea20a1c84199c465b70/GCA_000467735.1_ASM46773v1_genomic.fna_strict.fasta GCA_000467735.1_ASM46773v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6c/913b76e411f36eb5fa2a251902caaf/GCA_027569095.1_ASM2756909v1_genomic.fna_strict.fasta GCA_027569095.1_ASM2756909v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b0/cdd5fd90d7ad5e776403e93d32992e/GCA_003243085.1_ASM324308v1_genomic.fna_strict.fasta GCA_003243085.1_ASM324308v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f3/3855d9fb4eb9a2845d26b4511b0e08/GCA_000226015.1_MneLei_Aug2011_genomic.fna_strict.fasta GCA_000226015.1_MneLei_Aug2011_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/7d/e5354273231a04d1c9addf9284d9d4/GCA_014885075.1_ASM1488507v1_genomic.fna_strict.fasta GCA_014885075.1_ASM1488507v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/0d/4cbd50af2c33e807324d22b333c144/GCA_022814215.1_ASM2281421v1_genomic.fna_strict.fasta GCA_022814215.1_ASM2281421v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/2f/e34059fb85cee20081c753b70fcab4/GCA_000330505.1_EIA2_v2_genomic.fna_strict.fasta GCA_000330505.1_EIA2_v2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d8/2d456833f4a7643919efe16858e912/GCA_900406335.1_ASM90040633v1_genomic.fna_strict.fasta GCA_900406335.1_ASM90040633v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/36/4d8fce694eb3e7905c423d0592d4d6/GCA_002846955.1_A_aquasalis_v1.0_genomic.fna_strict.fasta GCA_002846955.1_A_aquasalis_v1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ff/b3746a3d30a2cbf14ed6e41e5d458e/GCA_002076135.1_ASM207613v1_genomic.fna_strict.fasta GCA_002076135.1_ASM207613v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4c/a88d6df0fc937bf7c27b29af7f1e0e/GCA_027577635.1_UCR_CoemRSA475_1.0_genomic.fna_strict.fasta GCA_027577635.1_UCR_CoemRSA475_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/15/f24d6b6ac59c42f7f4da31fa553e50/GCA_018691285.1_UNAM_Csor_1.0_genomic.fna_strict.fasta GCA_018691285.1_UNAM_Csor_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c5/f576ea84419883006dbd96d4ee3620/GCA_000181375.1_ASM18137v1_genomic.fna_strict.fasta GCA_000181375.1_ASM18137v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/62/44cb26e08c8721161f129557c45ab9/GCA_002891735.1_TetSoc1_genomic.fna_strict.fasta GCA_002891735.1_TetSoc1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cd/25ef4a33b441f2b152ef3c97af9753/GCA_030078075.1_ASM3007807v1_genomic.fna_strict.fasta GCA_030078075.1_ASM3007807v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9e/06c17abd6597b5fe07b784f1a3db4c/GCA_000164785.2_C_hoffmanni-2.0.1_genomic.fna_strict.fasta GCA_000164785.2_C_hoffmanni-2.0.1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/06/0499f8b7cfee1175e4e49b75ce6986/GCA_015342145.1_ASM1534214v1_genomic.fna_strict.fasta GCA_015342145.1_ASM1534214v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/1e/2094968d16ae6429b5fc07bdce69db/GCA_009602735.1_ASM960273v1_genomic.fna_strict.fasta GCA_009602735.1_ASM960273v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/94/688af6e862fab6d5b2fd411a894868/GCA_024256425.2_CGAR_prim_01v2_genomic.fna_strict.fasta GCA_024256425.2_CGAR_prim_01v2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/d4a7c7cccb73b878731d6dbc1e642f/GCA_002938485.2_Soryzae_2.0_genomic.fna_strict.fasta GCA_002938485.2_Soryzae_2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/d83c44cec3e849ca51bd23b15ab4b9/GCA_002018215.1_CTBE_SP803280_v1.0_genomic.fna_strict.fasta GCA_002018215.1_CTBE_SP803280_v1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3c/0200a781cf38cef3fa0132b4c4842f/GCA_000317765.2_CHIR_2.0_genomic.fna_strict.fasta GCA_000317765.2_CHIR_2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/c148f2a1d2464fca6d0345b3558cf0/GCA_022539395.1_myiCay2020_genomic.fna_strict.fasta GCA_022539395.1_myiCay2020_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a0/65524ccacc53851b4917bf67b5fd6a/GCA_011064425.1_Rrattus_CSIRO_v1_genomic.fna_strict.fasta GCA_011064425.1_Rrattus_CSIRO_v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c0/a7b077dd9c81d4927dfbe0768cad36/GCA_003571905.1_ASM357190v1_genomic.fna_strict.fasta GCA_003571905.1_ASM357190v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a7/7a4cd5e50d62b6be5ee9c4626a97b8/GCA_027569235.1_ASM2756923v1_genomic.fna_strict.fasta GCA_027569235.1_ASM2756923v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/02/5d4e60b3c19d3ac61bb37ab5b81b95/GCA_026283905.1_ASM2628390v1_genomic.fna_strict.fasta GCA_026283905.1_ASM2628390v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/75cb7982d8ec77d2395c2007341beb/GCA_000152225.2_Pcap_2.0_genomic.fna_strict.fasta GCA_000152225.2_Pcap_2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f1/1fe07c819c0631955879c2ecddb468/GCA_010312235.1_ButJap1.0_genomic.fna_strict.fasta GCA_010312235.1_ButJap1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9e/a31c68efc6458dfb92a6bec605475c/GCA_027575695.1_UCR_CoemRSA638_1.0_genomic.fna_strict.fasta GCA_027575695.1_UCR_CoemRSA638_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/18/b0f956fdea34d121b0600b79cd5ad2/GCA_018249875.1_SRR7174573_genomic.fna_strict.fasta GCA_018249875.1_SRR7174573_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3d/8220c5422996806beea9738ea24948/GCF_000002285.5_Dog10K_Boxer_Tasha_genomic.fna_strict.fasta GCF_000002285.5_Dog10K_Boxer_Tasha_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/c2a76f6e531e897db35a53e6510e5a/GCA_002966915.1_ASM296691v1_genomic.fna_strict.fasta GCA_002966915.1_ASM296691v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d9/07624ff4f77f215fbbe46ae34a4e66/GCA_023638675.1_C.penn_1.0_hap1_genomic.fna_strict.fasta GCA_023638675.1_C.penn_1.0_hap1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bc/12c8199f5e7953afc9dbf1e158b014/GCA_013401355.1_ASM1340135v1_genomic.fna_strict.fasta GCA_013401355.1_ASM1340135v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/11/29ce5039fb8e48f94e60c5ddc2f9d9/GCA_001599015.1_JCM_9580_assembly_v001_genomic.fna_strict.fasta GCA_001599015.1_JCM_9580_assembly_v001_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/35/25c8a9e84ae56bb7ae14a5f0e5ee67/GCA_001239805.1_ASM123980v1_genomic.fna_strict.fasta GCA_001239805.1_ASM123980v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/2a/448f28e51cac51553535076174d8c7/GCF_000001635.27_GRCm39_genomic.fna_strict.fasta GCF_000001635.27_GRCm39_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/17/49e2dae72ea99cb74573eea5f22cef/GCF_000296755.1_EriEur2.0_genomic.fna_strict.fasta GCF_000296755.1_EriEur2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6c/fcd94f3cc2f2917cc83b26580d259a/GCA_002116315.1_ASM211631v1_genomic.fna_strict.fasta GCA_002116315.1_ASM211631v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e2/f215cfd4a812f8d8e6e1ec34763fcb/GCA_022495145.1_Xylbam139988_1_genomic.fna_strict.fasta GCA_022495145.1_Xylbam139988_1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e4/76c972f7d6d8b67c86dce38a8a1d41/GCA_022651745.1_ASM2265174v1_genomic.fna_strict.fasta GCA_022651745.1_ASM2265174v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/36/6c2d5980d0a9b4aa8695e813e7d275/GCA_025766325.1_Benpoi1_genomic.fna_strict.fasta GCA_025766325.1_Benpoi1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ed/7ae3d7f4cd13d004735aecfb1596c9/GCF_000313985.2_ASM31398v2_genomic.fna_strict.fasta GCF_000313985.2_ASM31398v2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f1/c8befd76cd60df2b391ab747bcc8d5/GCA_022817305.1_ASM2281730v1_genomic.fna_strict.fasta GCA_022817305.1_ASM2281730v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/17daef417c7ad82c824fde39ea6eb0/GCA_013396695.1_ASM1339669v1_genomic.fna_strict.fasta GCA_013396695.1_ASM1339669v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/98/3da7a07d88549f1b4903216d3aa911/GCA_003013575.1_ASM301357v1_genomic.fna_strict.fasta GCA_003013575.1_ASM301357v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6e/332c69e34bf02a1d7ad42e228c3d63/GCF_018350175.1_F.catus_Fca126_mat1.0_genomic.fna_strict.fasta GCF_018350175.1_F.catus_Fca126_mat1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cf/ddebaae2f8c404d6aeecd983a7b3c7/GCA_903813345.2_Owenia_chromosome_genomic.fna_strict.fasta GCA_903813345.2_Owenia_chromosome_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/17/a1515fed05284e99a890ae405321d2/GCA_911387705.1_ihAelAcum1.1_alternate_haplotype_genomic.fna_strict.fasta GCA_911387705.1_ihAelAcum1.1_alternate_haplotype_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a7/ce7f5b445caf8de944533a8b6851e2/GCF_000005575.2_AgamP3_genomic.fna_strict.fasta GCF_000005575.2_AgamP3_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/69/10247fb1d2e57e6200812de49f8333/GCA_018119265.1_PriViv1.0_genomic.fna_strict.fasta GCA_018119265.1_PriViv1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e1/78b5f212ec00bb572ebf6b38a72be6/GCA_017591425.1_NIBS_Ocur_1.0_genomic.fna_strict.fasta GCA_017591425.1_NIBS_Ocur_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/fe/d53bbf91cf30145d50f0c4a0d8301b/GCF_011100555.1_mCalJa1.2.pat.X_genomic.fna_strict.fasta GCF_011100555.1_mCalJa1.2.pat.X_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/65/7df74d4c27897b055c213f179575e5/GCA_023781915.1_ASM2378191v1_genomic.fna_strict.fasta GCA_023781915.1_ASM2378191v1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9d/9aba8276e154a162278b497434273f/GCA_948208565.1_Hc-NTBG20172064-DRAFT-NextGenCassava-1.0_genomic.fna_strict.fasta GCA_948208565.1_Hc-NTBG20172064-DRAFT-NextGenCassava-1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/8b/c83bc445ee2cb418c016a376e59741/GCF_000147115.1_Myoluc2.0_genomic.fna_strict.fasta GCF_000147115.1_Myoluc2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/76/618d5ef41a8cb95e906291b99ae243/GCF_000003025.6_Sscrofa11.1_genomic.fna_strict.fasta GCF_000003025.6_Sscrofa11.1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e8/2251d2fd25725bdba8d97d4008c1b6/GCF_000001405.40_GRCh38.p14_genomic.fna_strict.fasta GCF_000001405.40_GRCh38.p14_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/69/6eb83e8912bb3aa3b3983dee26a38e/GCF_000151845.1_Pvam_2.0_genomic.fna_strict.fasta GCF_000151845.1_Pvam_2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/47/53280bd2f7a22006cccaa410085dfc/GCF_000001905.1_Loxafr3.0_genomic.fna_strict.fasta GCF_000001905.1_Loxafr3.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/c7bc81a450b0c9a5195c162e24a9fc/GCF_000151885.1_Dord_2.0_genomic.fna_strict.fasta GCF_000151885.1_Dord_2.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f0/e73cab6476bc165f501ffd4c1c3262/GCF_000151735.1_Cavpor3.0_genomic.fna_strict.fasta GCF_000151735.1_Cavpor3.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/8732f46dd46c42e39cccbae1bc3b70/GCF_000164845.4_VicPac3.2_genomic.fna_strict.fasta GCF_000164845.4_VicPac3.2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bb/13b0633a3962fdf7da1ea6489e6a5b/GCF_000165445.2_Mmur_3.0_genomic.fna_strict.fasta GCF_000165445.2_Mmur_3.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/ce923cab14c80e342086c8bea3c602/GCF_016920785.2_ASM1692078v2_genomic.fna_strict.fasta GCF_016920785.2_ASM1692078v2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f7/73b9c71e6340669db03173009aa7ef/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna_strict.fasta GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/05/ed53354b6f4cce03a1dc32973495ca/GCF_000181295.1_OtoGar3_genomic.fna_strict.fasta GCF_000181295.1_OtoGar3_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cf/71b07e279eaccd1d2d32fe99d6f075/GCF_000002295.2_MonDom5_genomic.fna_strict.fasta GCF_000002295.2_MonDom5_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/fd/2d011dd264c9045df150605954f67c/GCF_002863925.1_EquCab3.0_genomic.fna_strict.fasta GCF_002863925.1_EquCab3.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/77/440f22c88c7a399d6b2b5213f67f9a/GCF_002263795.2_ARS-UCD1.3_genomic.fna_strict.fasta GCF_002263795.2_ARS-UCD1.3_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/c40bccfe7e8534f7da817623e350e2/GCF_000164805.1_Tarsius_syrichta-2.0.1_genomic.fna_strict.fasta GCF_000164805.1_Tarsius_syrichta-2.0.1_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c2/c3368fb97a015c5848fd39f8603266/GCF_004115215.2_mOrnAna1.pri.v4_genomic.fna_strict.fasta GCF_004115215.2_mOrnAna1.pri.v4_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e8/563f102f95d1df4e8dc078a5b52044/GCF_002007445.2_ASM200744v3_genomic.fna_strict.fasta GCF_002007445.2_ASM200744v3_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/15/3da113a44b47633c4c3684e62ce458/GCF_015227675.2_mRatBN7.2_genomic.fna_strict.fasta GCF_015227675.2_mRatBN7.2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/37/cda17ce3db90de81ab46313efb57be/GCF_015732765.1_VPISU_Cqui_1.0_pri_paternal_genomic.fna_strict.fasta GCF_015732765.1_VPISU_Cqui_1.0_pri_paternal_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c3/a12a24e3c485733d8f6d18051ee16d/GCF_000208655.3_Dasnov3.2_genomic.fna_strict.fasta GCF_000208655.3_Dasnov3.2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/63/60d60bf6852fb64a130abe53203751/GCA_028372415.1_mMacEug1.pri_genomic.fna_strict.fasta GCA_028372415.1_mMacEug1.pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/95/1cb2ab178ff420daab297de0843199/GCF_003957565.2_bTaeGut1.4.pri_genomic.fna_strict.fasta GCF_003957565.2_bTaeGut1.4.pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/9dc94f5986ea1399b51e86b95cdd77/GCF_014633375.1_OchPri4.0_genomic.fna_strict.fasta GCF_014633375.1_OchPri4.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/1e801049ddeaf3edc9137f38708767/GCF_003339765.1_Mmul_10_genomic.fna_strict.fasta GCF_003339765.1_Mmul_10_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b3/98a2d58195696f0525a3bdf7a45eb6/GCF_002204515.2_AaegL5.0_genomic.fna_strict.fasta GCF_002204515.2_AaegL5.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/29/727a64d0348d4eabe7363aa09a6563/GCF_011762595.1_mTurTru1.mat.Y_genomic.fna_strict.fasta GCF_011762595.1_mTurTru1.mat.Y_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/85/2287d0d01f1da09b295490c8f069d6/GCF_016881025.1_HiC_Itri_2_genomic.fna_strict.fasta GCF_016881025.1_HiC_Itri_2_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bb/aee5d1253432c505a455ad1b0d354f/GCF_009806435.1_UM_NZW_1.0_genomic.fna_strict.fasta GCF_009806435.1_UM_NZW_1.0_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b6/05a331dcc0b3d8c5247a13935fa0de/GCF_027595985.1_mSorAra2.pri_genomic.fna_strict.fasta GCF_027595985.1_mSorAra2.pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/66/fbfafc096f1d589554d78b80b9790b/GCF_028858775.1_NHGRI_mPanTro3-v1.1-hic.freeze_pri_genomic.fna_strict.fasta GCF_028858775.1_NHGRI_mPanTro3-v1.1-hic.freeze_pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/97/71d49d0672adb6c0ecb0782ba26d4c/GCF_029281585.1_NHGRI_mGorGor1-v1.1-0.2.freeze_pri_genomic.fna_strict.fasta GCF_029281585.1_NHGRI_mGorGor1-v1.1-0.2.freeze_pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4d/cc5f1c35054a1333ad832f091600b9/GCF_028885625.1_NHGRI_mPonPyg2-v1.1-hic.freeze_pri_genomic.fna_strict.fasta GCF_028885625.1_NHGRI_mPonPyg2-v1.1-hic.freeze_pri_genomic.fna_strict.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a1/845356ab02183745daaf6486a624c8/GCA_023065795.1_ASM2306579v1_genomic.fna_context.fasta GCA_023065795.1_ASM2306579v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/0a/ee623c56bd14df564ea02be19168b3/GCA_000601435.1_P_lyc_v1_genomic.fna_context.fasta GCA_000601435.1_P_lyc_v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b8/31ca20a51fd9e7504682652137c90a/GCA_026225775.1_INECOL_Bpal_1.0_genomic.fna_context.fasta GCA_026225775.1_INECOL_Bpal_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d2/1bda4d2388982d01d256892a00442d/GCA_013400295.1_ASM1340029v1_genomic.fna_context.fasta GCA_013400295.1_ASM1340029v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/97/1ea32c2107b7fc2ce5cc15bcbb2618/GCA_025773905.1_ASM2577390v1_genomic.fna_context.fasta GCA_025773905.1_ASM2577390v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cc/202f41091b1d3ebaf3b71bbbaec790/GCA_004802705.1_ASM480270v1_genomic.fna_context.fasta GCA_004802705.1_ASM480270v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/18/8d226aa579b9fd1145138fb5c3d2f7/GCA_016432905.1_ASM1643290v1_genomic.fna_context.fasta GCA_016432905.1_ASM1643290v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3d/3995115f3d1bf25d4eca1d28ad03a5/GCA_000006255.1_Postia_placenta_V1.0_genomic.fna_context.fasta GCA_000006255.1_Postia_placenta_V1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/1a/64afe5e6fe2a7a49eafe93fb91d4b6/GCA_014048405.2_ASM1404840v2_genomic.fna_context.fasta GCA_014048405.2_ASM1404840v2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bf/168f5c44ac81a486f17f8137161fc0/GCA_005959805.1_ASM595980v1_genomic.fna_context.fasta GCA_005959805.1_ASM595980v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6e/e2642e1cd2d8074fa12da3ed1af073/GCA_004348175.1_PNOVO_Noble_KM_genomic.fna_context.fasta GCA_004348175.1_PNOVO_Noble_KM_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b3/a36609ae6dfea20a1c84199c465b70/GCA_000467735.1_ASM46773v1_genomic.fna_context.fasta GCA_000467735.1_ASM46773v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6c/913b76e411f36eb5fa2a251902caaf/GCA_027569095.1_ASM2756909v1_genomic.fna_context.fasta GCA_027569095.1_ASM2756909v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b0/cdd5fd90d7ad5e776403e93d32992e/GCA_003243085.1_ASM324308v1_genomic.fna_context.fasta GCA_003243085.1_ASM324308v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f3/3855d9fb4eb9a2845d26b4511b0e08/GCA_000226015.1_MneLei_Aug2011_genomic.fna_context.fasta GCA_000226015.1_MneLei_Aug2011_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/7d/e5354273231a04d1c9addf9284d9d4/GCA_014885075.1_ASM1488507v1_genomic.fna_context.fasta GCA_014885075.1_ASM1488507v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/0d/4cbd50af2c33e807324d22b333c144/GCA_022814215.1_ASM2281421v1_genomic.fna_context.fasta GCA_022814215.1_ASM2281421v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/2f/e34059fb85cee20081c753b70fcab4/GCA_000330505.1_EIA2_v2_genomic.fna_context.fasta GCA_000330505.1_EIA2_v2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d8/2d456833f4a7643919efe16858e912/GCA_900406335.1_ASM90040633v1_genomic.fna_context.fasta GCA_900406335.1_ASM90040633v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/36/4d8fce694eb3e7905c423d0592d4d6/GCA_002846955.1_A_aquasalis_v1.0_genomic.fna_context.fasta GCA_002846955.1_A_aquasalis_v1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ff/b3746a3d30a2cbf14ed6e41e5d458e/GCA_002076135.1_ASM207613v1_genomic.fna_context.fasta GCA_002076135.1_ASM207613v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4c/a88d6df0fc937bf7c27b29af7f1e0e/GCA_027577635.1_UCR_CoemRSA475_1.0_genomic.fna_context.fasta GCA_027577635.1_UCR_CoemRSA475_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/15/f24d6b6ac59c42f7f4da31fa553e50/GCA_018691285.1_UNAM_Csor_1.0_genomic.fna_context.fasta GCA_018691285.1_UNAM_Csor_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c5/f576ea84419883006dbd96d4ee3620/GCA_000181375.1_ASM18137v1_genomic.fna_context.fasta GCA_000181375.1_ASM18137v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/62/44cb26e08c8721161f129557c45ab9/GCA_002891735.1_TetSoc1_genomic.fna_context.fasta GCA_002891735.1_TetSoc1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cd/25ef4a33b441f2b152ef3c97af9753/GCA_030078075.1_ASM3007807v1_genomic.fna_context.fasta GCA_030078075.1_ASM3007807v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9e/06c17abd6597b5fe07b784f1a3db4c/GCA_000164785.2_C_hoffmanni-2.0.1_genomic.fna_context.fasta GCA_000164785.2_C_hoffmanni-2.0.1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/06/0499f8b7cfee1175e4e49b75ce6986/GCA_015342145.1_ASM1534214v1_genomic.fna_context.fasta GCA_015342145.1_ASM1534214v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/1e/2094968d16ae6429b5fc07bdce69db/GCA_009602735.1_ASM960273v1_genomic.fna_context.fasta GCA_009602735.1_ASM960273v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/94/688af6e862fab6d5b2fd411a894868/GCA_024256425.2_CGAR_prim_01v2_genomic.fna_context.fasta GCA_024256425.2_CGAR_prim_01v2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/d4a7c7cccb73b878731d6dbc1e642f/GCA_002938485.2_Soryzae_2.0_genomic.fna_context.fasta GCA_002938485.2_Soryzae_2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/d83c44cec3e849ca51bd23b15ab4b9/GCA_002018215.1_CTBE_SP803280_v1.0_genomic.fna_context.fasta GCA_002018215.1_CTBE_SP803280_v1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3c/0200a781cf38cef3fa0132b4c4842f/GCA_000317765.2_CHIR_2.0_genomic.fna_context.fasta GCA_000317765.2_CHIR_2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/c148f2a1d2464fca6d0345b3558cf0/GCA_022539395.1_myiCay2020_genomic.fna_context.fasta GCA_022539395.1_myiCay2020_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a0/65524ccacc53851b4917bf67b5fd6a/GCA_011064425.1_Rrattus_CSIRO_v1_genomic.fna_context.fasta GCA_011064425.1_Rrattus_CSIRO_v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c0/a7b077dd9c81d4927dfbe0768cad36/GCA_003571905.1_ASM357190v1_genomic.fna_context.fasta GCA_003571905.1_ASM357190v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a7/7a4cd5e50d62b6be5ee9c4626a97b8/GCA_027569235.1_ASM2756923v1_genomic.fna_context.fasta GCA_027569235.1_ASM2756923v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/02/5d4e60b3c19d3ac61bb37ab5b81b95/GCA_026283905.1_ASM2628390v1_genomic.fna_context.fasta GCA_026283905.1_ASM2628390v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/75cb7982d8ec77d2395c2007341beb/GCA_000152225.2_Pcap_2.0_genomic.fna_context.fasta GCA_000152225.2_Pcap_2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f1/1fe07c819c0631955879c2ecddb468/GCA_010312235.1_ButJap1.0_genomic.fna_context.fasta GCA_010312235.1_ButJap1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9e/a31c68efc6458dfb92a6bec605475c/GCA_027575695.1_UCR_CoemRSA638_1.0_genomic.fna_context.fasta GCA_027575695.1_UCR_CoemRSA638_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/18/b0f956fdea34d121b0600b79cd5ad2/GCA_018249875.1_SRR7174573_genomic.fna_context.fasta GCA_018249875.1_SRR7174573_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/3d/8220c5422996806beea9738ea24948/GCF_000002285.5_Dog10K_Boxer_Tasha_genomic.fna_context.fasta GCF_000002285.5_Dog10K_Boxer_Tasha_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/c2a76f6e531e897db35a53e6510e5a/GCA_002966915.1_ASM296691v1_genomic.fna_context.fasta GCA_002966915.1_ASM296691v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/d9/07624ff4f77f215fbbe46ae34a4e66/GCA_023638675.1_C.penn_1.0_hap1_genomic.fna_context.fasta GCA_023638675.1_C.penn_1.0_hap1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bc/12c8199f5e7953afc9dbf1e158b014/GCA_013401355.1_ASM1340135v1_genomic.fna_context.fasta GCA_013401355.1_ASM1340135v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/11/29ce5039fb8e48f94e60c5ddc2f9d9/GCA_001599015.1_JCM_9580_assembly_v001_genomic.fna_context.fasta GCA_001599015.1_JCM_9580_assembly_v001_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/35/25c8a9e84ae56bb7ae14a5f0e5ee67/GCA_001239805.1_ASM123980v1_genomic.fna_context.fasta GCA_001239805.1_ASM123980v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/2a/448f28e51cac51553535076174d8c7/GCF_000001635.27_GRCm39_genomic.fna_context.fasta GCF_000001635.27_GRCm39_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/17/49e2dae72ea99cb74573eea5f22cef/GCF_000296755.1_EriEur2.0_genomic.fna_context.fasta GCF_000296755.1_EriEur2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6c/fcd94f3cc2f2917cc83b26580d259a/GCA_002116315.1_ASM211631v1_genomic.fna_context.fasta GCA_002116315.1_ASM211631v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e2/f215cfd4a812f8d8e6e1ec34763fcb/GCA_022495145.1_Xylbam139988_1_genomic.fna_context.fasta GCA_022495145.1_Xylbam139988_1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e4/76c972f7d6d8b67c86dce38a8a1d41/GCA_022651745.1_ASM2265174v1_genomic.fna_context.fasta GCA_022651745.1_ASM2265174v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/36/6c2d5980d0a9b4aa8695e813e7d275/GCA_025766325.1_Benpoi1_genomic.fna_context.fasta GCA_025766325.1_Benpoi1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ed/7ae3d7f4cd13d004735aecfb1596c9/GCF_000313985.2_ASM31398v2_genomic.fna_context.fasta GCF_000313985.2_ASM31398v2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f1/c8befd76cd60df2b391ab747bcc8d5/GCA_022817305.1_ASM2281730v1_genomic.fna_context.fasta GCA_022817305.1_ASM2281730v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/17daef417c7ad82c824fde39ea6eb0/GCA_013396695.1_ASM1339669v1_genomic.fna_context.fasta GCA_013396695.1_ASM1339669v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/98/3da7a07d88549f1b4903216d3aa911/GCA_003013575.1_ASM301357v1_genomic.fna_context.fasta GCA_003013575.1_ASM301357v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/6e/332c69e34bf02a1d7ad42e228c3d63/GCF_018350175.1_F.catus_Fca126_mat1.0_genomic.fna_context.fasta GCF_018350175.1_F.catus_Fca126_mat1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cf/ddebaae2f8c404d6aeecd983a7b3c7/GCA_903813345.2_Owenia_chromosome_genomic.fna_context.fasta GCA_903813345.2_Owenia_chromosome_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/17/a1515fed05284e99a890ae405321d2/GCA_911387705.1_ihAelAcum1.1_alternate_haplotype_genomic.fna_context.fasta GCA_911387705.1_ihAelAcum1.1_alternate_haplotype_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/a7/ce7f5b445caf8de944533a8b6851e2/GCF_000005575.2_AgamP3_genomic.fna_context.fasta GCF_000005575.2_AgamP3_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/69/10247fb1d2e57e6200812de49f8333/GCA_018119265.1_PriViv1.0_genomic.fna_context.fasta GCA_018119265.1_PriViv1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e1/78b5f212ec00bb572ebf6b38a72be6/GCA_017591425.1_NIBS_Ocur_1.0_genomic.fna_context.fasta GCA_017591425.1_NIBS_Ocur_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/fe/d53bbf91cf30145d50f0c4a0d8301b/GCF_011100555.1_mCalJa1.2.pat.X_genomic.fna_context.fasta GCF_011100555.1_mCalJa1.2.pat.X_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/65/7df74d4c27897b055c213f179575e5/GCA_023781915.1_ASM2378191v1_genomic.fna_context.fasta GCA_023781915.1_ASM2378191v1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/9d/9aba8276e154a162278b497434273f/GCA_948208565.1_Hc-NTBG20172064-DRAFT-NextGenCassava-1.0_genomic.fna_context.fasta GCA_948208565.1_Hc-NTBG20172064-DRAFT-NextGenCassava-1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/8b/c83bc445ee2cb418c016a376e59741/GCF_000147115.1_Myoluc2.0_genomic.fna_context.fasta GCF_000147115.1_Myoluc2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/76/618d5ef41a8cb95e906291b99ae243/GCF_000003025.6_Sscrofa11.1_genomic.fna_context.fasta GCF_000003025.6_Sscrofa11.1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e8/2251d2fd25725bdba8d97d4008c1b6/GCF_000001405.40_GRCh38.p14_genomic.fna_context.fasta GCF_000001405.40_GRCh38.p14_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/69/6eb83e8912bb3aa3b3983dee26a38e/GCF_000151845.1_Pvam_2.0_genomic.fna_context.fasta GCF_000151845.1_Pvam_2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/47/53280bd2f7a22006cccaa410085dfc/GCF_000001905.1_Loxafr3.0_genomic.fna_context.fasta GCF_000001905.1_Loxafr3.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/23/c7bc81a450b0c9a5195c162e24a9fc/GCF_000151885.1_Dord_2.0_genomic.fna_context.fasta GCF_000151885.1_Dord_2.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f0/e73cab6476bc165f501ffd4c1c3262/GCF_000151735.1_Cavpor3.0_genomic.fna_context.fasta GCF_000151735.1_Cavpor3.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/8732f46dd46c42e39cccbae1bc3b70/GCF_000164845.4_VicPac3.2_genomic.fna_context.fasta GCF_000164845.4_VicPac3.2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bb/13b0633a3962fdf7da1ea6489e6a5b/GCF_000165445.2_Mmur_3.0_genomic.fna_context.fasta GCF_000165445.2_Mmur_3.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4f/ce923cab14c80e342086c8bea3c602/GCF_016920785.2_ASM1692078v2_genomic.fna_context.fasta GCF_016920785.2_ASM1692078v2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/f7/73b9c71e6340669db03173009aa7ef/GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna_context.fasta GCF_016699485.2_bGalGal1.mat.broiler.GRCg7b_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/05/ed53354b6f4cce03a1dc32973495ca/GCF_000181295.1_OtoGar3_genomic.fna_context.fasta GCF_000181295.1_OtoGar3_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/cf/71b07e279eaccd1d2d32fe99d6f075/GCF_000002295.2_MonDom5_genomic.fna_context.fasta GCF_000002295.2_MonDom5_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/fd/2d011dd264c9045df150605954f67c/GCF_002863925.1_EquCab3.0_genomic.fna_context.fasta GCF_002863925.1_EquCab3.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/77/440f22c88c7a399d6b2b5213f67f9a/GCF_002263795.2_ARS-UCD1.3_genomic.fna_context.fasta GCF_002263795.2_ARS-UCD1.3_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/c40bccfe7e8534f7da817623e350e2/GCF_000164805.1_Tarsius_syrichta-2.0.1_genomic.fna_context.fasta GCF_000164805.1_Tarsius_syrichta-2.0.1_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c2/c3368fb97a015c5848fd39f8603266/GCF_004115215.2_mOrnAna1.pri.v4_genomic.fna_context.fasta GCF_004115215.2_mOrnAna1.pri.v4_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/e8/563f102f95d1df4e8dc078a5b52044/GCF_002007445.2_ASM200744v3_genomic.fna_context.fasta GCF_002007445.2_ASM200744v3_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/15/3da113a44b47633c4c3684e62ce458/GCF_015227675.2_mRatBN7.2_genomic.fna_context.fasta GCF_015227675.2_mRatBN7.2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/37/cda17ce3db90de81ab46313efb57be/GCF_015732765.1_VPISU_Cqui_1.0_pri_paternal_genomic.fna_context.fasta GCF_015732765.1_VPISU_Cqui_1.0_pri_paternal_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/c3/a12a24e3c485733d8f6d18051ee16d/GCF_000208655.3_Dasnov3.2_genomic.fna_context.fasta GCF_000208655.3_Dasnov3.2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/63/60d60bf6852fb64a130abe53203751/GCA_028372415.1_mMacEug1.pri_genomic.fna_context.fasta GCA_028372415.1_mMacEug1.pri_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/95/1cb2ab178ff420daab297de0843199/GCF_003957565.2_bTaeGut1.4.pri_genomic.fna_context.fasta GCF_003957565.2_bTaeGut1.4.pri_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/ae/9dc94f5986ea1399b51e86b95cdd77/GCF_014633375.1_OchPri4.0_genomic.fna_context.fasta GCF_014633375.1_OchPri4.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/75/1e801049ddeaf3edc9137f38708767/GCF_003339765.1_Mmul_10_genomic.fna_context.fasta GCF_003339765.1_Mmul_10_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b3/98a2d58195696f0525a3bdf7a45eb6/GCF_002204515.2_AaegL5.0_genomic.fna_context.fasta GCF_002204515.2_AaegL5.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/29/727a64d0348d4eabe7363aa09a6563/GCF_011762595.1_mTurTru1.mat.Y_genomic.fna_context.fasta GCF_011762595.1_mTurTru1.mat.Y_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/85/2287d0d01f1da09b295490c8f069d6/GCF_016881025.1_HiC_Itri_2_genomic.fna_context.fasta GCF_016881025.1_HiC_Itri_2_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/bb/aee5d1253432c505a455ad1b0d354f/GCF_009806435.1_UM_NZW_1.0_genomic.fna_context.fasta GCF_009806435.1_UM_NZW_1.0_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/b6/05a331dcc0b3d8c5247a13935fa0de/GCF_027595985.1_mSorAra2.pri_genomic.fna_context.fasta GCF_027595985.1_mSorAra2.pri_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/66/fbfafc096f1d589554d78b80b9790b/GCF_028858775.1_NHGRI_mPanTro3-v1.1-hic.freeze_pri_genomic.fna_context.fasta GCF_028858775.1_NHGRI_mPanTro3-v1.1-hic.freeze_pri_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/97/71d49d0672adb6c0ecb0782ba26d4c/GCF_029281585.1_NHGRI_mGorGor1-v1.1-0.2.freeze_pri_genomic.fna_context.fasta GCF_029281585.1_NHGRI_mGorGor1-v1.1-0.2.freeze_pri_genomic.fna_context.fasta
+    ln -s /home/user/Desktop/Cormac/hi-fever/work/4d/cc5f1c35054a1333ad832f091600b9/GCF_028885625.1_NHGRI_mPonPyg2-v1.1-hic.freeze_pri_genomic.fna_context.fasta GCF_028885625.1_NHGRI_mPonPyg2-v1.1-hic.freeze_pri_genomic.fna_context.fasta
+}
+
+nxf_unstage() {
+    true
+    [[ ${nxf_main_ret:=0} != 0 ]] && return
+}
+
+nxf_main() {
+    trap on_exit EXIT
+    trap on_term TERM INT USR2
+    trap '' USR1
+
+    [[ "${NXF_CHDIR:-}" ]] && cd "$NXF_CHDIR"
+    NXF_SCRATCH=''
+    [[ $NXF_DEBUG > 0 ]] && nxf_env
+    touch /home/user/Desktop/Cormac/hi-fever/work/82/eb2417837cb26a724081d6ed8d7379/.command.begin
+    set +u
+    set -u
+    export PATH="$PATH:/home/user/Desktop/Cormac/hi-fever/bin"
+    [[ $NXF_SCRATCH ]] && cd $NXF_SCRATCH
+    nxf_stage
+
+    set +e
+    ctmp=$(set +u; nxf_mktemp /dev/shm 2>/dev/null || nxf_mktemp $TMPDIR)
+    local cout=$ctmp/.command.out; mkfifo $cout
+    local cerr=$ctmp/.command.err; mkfifo $cerr
+    tee .command.out < $cout &
+    tee1=$!
+    tee .command.err < $cerr >&2 &
+    tee2=$!
+    ( nxf_launch ) >$cout 2>$cerr &
+    pid=$!
+    wait $pid || nxf_main_ret=$?
+    wait $tee1 $tee2
+    nxf_unstage
+}
+
+$NXF_ENTRY
