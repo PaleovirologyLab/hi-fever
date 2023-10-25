@@ -167,6 +167,10 @@ Modify in-frame STOP codons in the Genewise coding DNA sequence output (default:
 
 - `--stop_task soft-mask`
 
+Subset ($n$) of total loci count ($N$) processed by each Genewise task. To ensure equivalent workload across tasks and a high level of parallelisation, Genewise operations are split into $T$ tasks, where $T = N/n$ (default: 500)
+
+- `--pairs_per_task 100`
+
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
 - `-with-report report.html`
