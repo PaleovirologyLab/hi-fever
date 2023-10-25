@@ -8,7 +8,6 @@ process build_db {
     path "virusdb.dmnd", emit: vir_db_ch
     publishDir "${params.outdir}/virusdb", mode: "copy"
 
-
     """
 
     mmseqs createdb $queries DB
