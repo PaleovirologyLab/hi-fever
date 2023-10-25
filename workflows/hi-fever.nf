@@ -48,13 +48,13 @@ workflow HIFEVER {
     def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
     def ftp_ch = Channel.fromPath(params.ftp_file)
     def reciprocal_db_ch = Channel.fromPath(params.reciprocal_db)
-    clustered_proteins = Channel.value("$PWD/${params.outdir}/virusdb/DB_clu_rep.fasta")
 
     // Build clustered DIAMOND query database from user supplied protein FASTA
     build_db(query_ch)
+    clustered_proteins_val = build_db.out.clust_ch.collect()
 
     // HMMER run on clustered queries
-    hmmer (profiles_ch, build_db.out.clust_ch)
+    hmmer(profiles_ch, clustered_proteins_val)
 
     // Unpack user supplied ftp list and begin downloading assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
@@ -71,33 +71,31 @@ workflow HIFEVER {
     annotated_hits_collected = intersect_domains_merge_extract.out.annot_tsv_ch.collect()
 
     // Extract ORFs that overlap DIAMOND hits (extending into flanks)
-    orfs_collected = orf_extract (intersect_domains_merge_extract.out.context_fa_ch, \
+    orfs_collected = orf_extract(intersect_domains_merge_extract.out.context_fa_ch, \
                 intersect_domains_merge_extract.out.strict_coords_ch).collect()
 
+    // Reciprocal DIAMOND & and prepare for genewise
+    reciprocal_diamond(strict_fastas_collected,
+                    context_fastas_collected,
+                    reciprocal_db_ch,
+                    annotated_hits_collected,
+                    clustered_proteins_val)
+
+    pair_subsets = reciprocal_diamond.out.pairs_ch.splitText(by: params.pairs_per_task, file: true)
+    best_hit_proteins_val = reciprocal_diamond.out.best_hits_fa_ch.collect()
+    strict_fastas_val = reciprocal_diamond.out.merged_fa_ch.collect()
+    context_fastas_val = reciprocal_diamond.out.context_fa_ch.collect()
+    context_coords_val = reciprocal_diamond.out.context_coords_ch.collect()
+
     // Frameshift and STOP aware reconstruction of EVE sequences
-    collected_genewise = genewise (intersect_domains_merge_extract.out.annot_tsv_ch, \
-                                intersect_domains_merge_extract.out.strict_fa_ch, \
-                                intersect_domains_merge_extract.out.context_fa_ch, \
-                                intersect_domains_merge_extract.out.context_coords_ch, \
-                                clustered_proteins) | \
-                                collect
-
-    // Reciprocal DIAMOND
-    reciprocal_diamond (collected_genewise, reciprocal_db_ch)
-
-    // Attempt genewise improvement if reciprocal best hit changed
-    attempt_genewise_improvement (reciprocal_diamond.out.original_genewise_ch, \
-                                reciprocal_diamond.out.reciprocal_hits_ch, \
-                                reciprocal_diamond.out.reciprocal_fasta_ch, \
-                                reciprocal_db_ch, \
-                                strict_fastas_collected, \
-                                context_fastas_collected)
+    genewise(pair_subsets,
+            best_hit_proteins_val,
+            strict_fastas_val,
+            context_fastas_val,
+            context_coords_val).collectFile(name: 'genewise.txt', newLine: false, storeDir: "${params.outdir}/sql")
 
     // Produce final outputs
-    publish (strict_fastas_collected, \
-            context_fastas_collected, \
-            locus_assembly_map_collected, \
-            orfs_collected, \
-            annotated_hits_collected)
+    publish(locus_assembly_map_collected, \
+            orfs_collected)
 
 }
