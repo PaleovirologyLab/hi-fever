@@ -32,7 +32,7 @@ if __name__ == "__main__":
     with open(args.file, "r") as file:
         for line in file:
             columns = line.strip().split("\t")
-            coding_sequence = columns[10]  # Column 11 (0-based index)
+            coding_sequence = columns[11]  # Column 12 (0-based index)
             modified_sequence, stop_codons = stop_handler(coding_sequence, args.task)
-            columns[10] = modified_sequence  # Replace the original sequence with the modified one
+            columns[11] = modified_sequence  # Replace the original sequence with the modified one
             print("\t".join(columns) + "\t" + str(stop_codons))
