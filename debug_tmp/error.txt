@@ -1,8 +1,0 @@
-Command error:
-
-  double free or corruption (!prev)
-  malloc(): invalid size (unsorted)
-  double free or corruption (!prev)
-  double free or corruption (!prev)
-  double free or corruption (!prev)
-  double free or corruption (!prev)
