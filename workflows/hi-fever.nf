@@ -34,9 +34,8 @@ include { assembly_stats } from '../modules/assembly_stats.nf'
 include { diamond } from '../modules/diamond.nf'
 include { intersect_domains_merge_extract } from '../modules/intersect_domains_merge_extract.nf'
 include { orf_extract } from '../modules/orf_extract.nf'
-include { genewise } from '../modules/genewise.nf'
 include { reciprocal_diamond } from '../modules/reciprocal_diamond.nf'
-include { attempt_genewise_improvement } from '../modules/attempt_genewise_improvement.nf'
+include { genewise } from '../modules/genewise.nf'
 include { publish } from '../modules/publish.nf'
 
 // Run local workflow
