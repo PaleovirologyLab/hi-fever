@@ -5,7 +5,6 @@ process intersect_domains_merge_extract {
 
     output:
     path "strict_coords.bed", emit: strict_coords_ch
-    path "context_coords.bed", emit: context_coords_ch
     path "*_matches.dmnd.annot.tsv", emit: annot_tsv_ch
     path "*_strict.fasta", emit: strict_fa_ch
     path "*_context.fasta", emit: context_fa_ch
@@ -25,14 +24,14 @@ process intersect_domains_merge_extract {
 
     # Intersect domains & produce non-redundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
-    # Calculates maximal strictly overlapping coordinate ranges and stores in temp file.
+    # Calculates maximal strictly overlapping coordinate ranges and stores in BED file.
     # Adds a column to main tsv denoting which coordinates are in mergable overlapping clusters
     # Sorts best bitscore alignment per cluster to the top and removes others
     # Intersects this with the maximal range temp file
     # Converts to a subject oriented bed (i.e., protein hit and coordinates).
     # Intersects with domain coordinate annotation file, reports:
 
-    # sseqid_(protein) sstart send qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen
+    # sseqid_(protein) sstart send locus_id qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen
     # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue
     # model_acc model_name model_description
 
@@ -61,13 +60,6 @@ process intersect_domains_merge_extract {
     awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
     blastdbcmd -entry_batch - -db \$dbpath > \
     "\${filename}_context.fasta"
-
-    # Generate accurate context FASTA coordinates (prior awk operation can leave non-existent overhang on the right flank)
-
-    grep ">" *_context.fasta | \
-    sed 's/ .*//; s/>//; s/[:-]/\t/g' | \
-    sort -k1,1 -k2,2n > \
-    context_coords.bed
 
     # Generate assemblyID to locus dictionary
 
