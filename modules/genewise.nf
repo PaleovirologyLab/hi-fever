@@ -48,7 +48,7 @@ process genewise {
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
             genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
-            grep -v ">\\|Bits   Query" | \
+            grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
             tr -s '\t' | \
@@ -94,7 +94,7 @@ process genewise {
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
             genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
-            grep -v ">\\|Bits   Query" | \
+            grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
             tr -s '\t' | \
