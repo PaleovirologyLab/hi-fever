@@ -35,9 +35,8 @@ include { assembly_stats } from '../modules/xgc_assembly_stats.nf'
 include { diamond } from '../modules/xgc_diamond.nf'
 include { intersect_domains_merge_extract } from '../modules/xgc_intersect_domains_merge_extract.nf'
 include { orf_extract } from '../modules/xgc_orf_extract.nf'
-include { genewise } from '../modules/xgc_genewise.nf'
 include { reciprocal_diamond } from '../modules/xgc_reciprocal_diamond.nf'
-include { attempt_genewise_improvement } from '../modules/xgc_attempt_genewise_improvement.nf'
+include { genewise } from '../modules/xgc_genewise.nf'
 
 // Run cloud batch workflow
 
