@@ -21,8 +21,8 @@ process genewise {
 
     cut -f1 $pair_subsets | sort | uniq > wise_tmp/required_proteins.txt
     cut -f2 $pair_subsets | sort | uniq > wise_tmp/required_strict_nts.txt
-    cut -f1-2 $pair_subsets > wise_tmp/loop_input.txt
-    cut -f5-7 $pair_subsets > wise_tmp/genomic_coords
+    cut -f1-2 $pair_subsets > wise_tmp/loop_input1.txt
+    cut -f5-7 $pair_subsets > wise_tmp/genomic_coords1
     awk 'BEGIN {OFS="\t"} {print \$5, \$6, \$7, \$1}' $pair_subsets | sort -k1,1 -k2,2n > wise_tmp/intersection_bed
 
     # Extract required sequence subsets
@@ -47,7 +47,7 @@ process genewise {
         do
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "$params.genewise_matrix".bla -sum -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -56,26 +56,26 @@ process genewise {
             sort -k5,5 -k1,1nr | \
             sort -u -k5,5 >> \
             wise_tmp/genewise_strict
-        done < wise_tmp/loop_input.txt
+        done < wise_tmp/loop_input1.txt
 
     # Back-calculate genomic coords from genewise
 
-    paste wise_tmp/genewise_strict wise_tmp/genomic_coords | \
+    paste wise_tmp/genewise_strict wise_tmp/genomic_coords1 | \
     tr -s '\t' | \
-    awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$12, \$13+\$6-1, \$13+\$7-1, "+", \$5, "strict", \$1, \$2, \$3, \$4, \$10, \$11, \$9, \$8; else print \$12, \$13+\$7-1, \$13+\$6-1, "-", \$5, "strict", \$1, \$2, \$3, \$4, \$10, \$11, \$9, \$8}' | \
+    awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$11, \$12+\$6-1, \$12+\$7-1, "+", \$5, "strict", \$1, \$2, \$3, \$4, \$10, \$9, \$8; else print \$11, \$12+\$7-1, \$12+\$6-1, "-", \$5, "strict", \$1, \$2, \$3, \$4, \$10, \$9, \$8}' | \
     sort -k1,1 -k2,2n > \
     wise_tmp/output1
 
     # Find any context regions fully overlapping strict regions in this task
 
     bedtools intersect -a wise_tmp/intersection_bed -b all_context_coords.bed -loj -f 1 -sorted | \
-    tee wise_tmp/genomic_coords | \
+    tee wise_tmp/genomic_coords2 | \
     awk 'BEGIN {OFS="\t"} {print \$4, \$5":"\$6"-"\$7}' > \
-    wise_tmp/loop_input.txt
+    wise_tmp/loop_input2.txt
 
     # Prepare list of context sequences required for this task
 
-    cut -f2 wise_tmp/loop_input.txt | sort | uniq > wise_tmp/required_context_nts.txt
+    cut -f2 wise_tmp/loop_input2.txt | sort | uniq > wise_tmp/required_context_nts.txt
 
     # Extract required sequence subset
 
@@ -93,7 +93,7 @@ process genewise {
         do
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -matrix "$params.genewise_matrix".bla -sum -pep -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "$params.genewise_matrix".bla -sum -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -102,13 +102,13 @@ process genewise {
             sort -k5,5 -k1,1nr | \
             sort -u -k5,5 >> \
             wise_tmp/genewise_context
-        done < wise_tmp/loop_input.txt
+        done < wise_tmp/loop_input2.txt
 
     # Back-calculate genomic coords from genewise, remove redundancy (sites found in two context FASTAs)
 
-    paste wise_tmp/genewise_context wise_tmp/genomic_coords | \
+    paste wise_tmp/genewise_context wise_tmp/genomic_coords2 | \
     tr -s '\t' | \
-    awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$16, \$17+\$6-1, \$17+\$7-1, "+", \$12":"\$13"-"\$14, "context", \$1, \$2, \$3, \$4, \$10, \$11, \$9, \$8; else print \$16, \$17+\$7-1, \$17+\$6-1, "-", \$12":"\$13"-"\$14, "context", \$1, \$2, \$3, \$4, \$10, \$11, \$9, \$8}' | \
+    awk 'BEGIN{OFS="\t"} {if (\$6 < \$7) print \$15, \$16+\$6-1, \$16+\$7-1, "+", \$11":"\$12"-"\$13, "context", \$1, \$2, \$3, \$4, \$10, \$9, \$8; else print \$15, \$16+\$7-1, \$16+\$6-1, "-", \$11":"\$12"-"\$13, "context", \$1, \$2, \$3, \$4, \$10, \$9, \$8}' | \
     sort -u -k5,5 | \
     sort -k1,1 -k2,2n > \
     wise_tmp/output2
@@ -133,9 +133,13 @@ process genewise {
     wise_tmp/merged_results
 
     # Post-processing of in-frame STOPs
-    # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend peptide cdna intron_count idels_frameshifts inframe_STOPs
 
-    stop_convert_and_count.py --task $params.stop_task --file wise_tmp/merged_results
+    stopConvertAndCount.py --task $params.stop_task --file wise_tmp/merged_results > wise_tmp/stops_processed
+
+    # Translation of coding sequences
+    # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
+
+    translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
 
     """
 
