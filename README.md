@@ -231,6 +231,7 @@ hmmpress Pfam-A.hmm
 
 ```
 conda activate hi-fever
+cd data
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
 wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.FULL.gz
 gunzip prot.accession2taxid.FULL.gz
