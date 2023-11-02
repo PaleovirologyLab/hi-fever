@@ -7,8 +7,9 @@
 Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. Some features:
 
 - Protein-to-DNA based search
-- Scales from laptop to cluster or cloud
 - Designed to function with 1000's of input assemblies
+- Scales from laptop to cluster or cloud
+- Conda & Docker compatible
 
 Outputs include:
 
@@ -28,7 +29,7 @@ Clone the repo, e.g., with GitHub CLI:
 gh repo clone Paleovirology/hi-fever
 ```
 
-To run with presets, ensure the following are in your working directory:
+To run with presets, ensure the following are in the data directory:
 
 >`protein_query.fasta` [[more information]](#protein-queries)
 
@@ -53,7 +54,7 @@ conda activate hi-fever
 Run the workflow:
 
 ```
-nextflow hi-fever.nf
+nextflow main.nf
 ```
 
 #### Running with Conda via a job scheduler, e.g., SLURM
@@ -93,26 +94,38 @@ cd ..
 Run the workflow:
 
 ```
-nextflow hi-fever.nf -with-docker hi-fever
+nextflow main.nf -with-docker hi-fever
 ```
 
 ## Optional parameters and example inputs
 
+Workflow to run, LOCAL: for single nodes on clusters or cloud, BATCH: for cloud batch services (default: LOCAL).
+
+- `--entry BATCH`
+
+For cloud batch only, specify the cloud storage bucket.
+
+- `--bucket_name my-bucket`
+
 Custom protein query file (default: protein_query.fasta).
 
-- `--query_file_aa circoviridae.fa`
+- `--query_file_aa data/circoviridae.fa`
 
 Custom ftp file (default: ftp_list.txt).
 
-- `--ftp_file assemblies.txt`
+- `--ftp_file data/assemblies.txt`
 
 Location of custom pHMM library for query domain annotation (default: domains).
 
-- `--phmms Pfam-32`
+- `--phmms data/Pfam-32`
+
+Name of output directory (default: output).
+
+- `--outdir 2023-07-31-16:24-herpesviridae_vs_tarsier`
 
 Custom reciprocal BLASTp database (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
 
-- `--reciprocal_db nr.dmnd`
+- `--reciprocal_db data/nr.dmnd`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -122,6 +135,10 @@ Minimum percentage of cluster member sequence length that must overlap with the 
 
 - `--mmseqs_cover 0.80`
 
+DIAMOND fork count. By default Nextflow attempts to run all available forward DIAMOND tasks in parallel (one for each currently downloaded assembly), which can lead to overuse of memory resources and job termination. On local machines and clusters, it is therefore suggested to limit the number of parallel DIAMOND tasks (i.e., "forks") allowed at once. For setting the value, we recommend total cores / 12. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process (default: 4 for cluster workflow, and not set on cloud workflow as instances allow parallel processing).
+
+- `--diamond_forks 8`
+
 [DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default: very-sensitive).
 
 - `--diamond_mode ultra-sensitive`
@@ -129,10 +146,6 @@ Minimum percentage of cluster member sequence length that must overlap with the 
 [DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#alignment-options) (default: BLOSUM62).
 
 - `--diamond_matrix BLOSUM45`
-
-CPUs per DIAMOND fork (default: 12). By default the forward DIAMOND search will be "forked" to run four assemblies in parallel, and each task will be allocated this number of CPUs. To set, recommend dividing the available CPUs by four. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process.
-
-- `--diamond_cpus 6`
 
 Maximum interval length allowed between features in the context FASTA (default: 1000).
 
@@ -153,6 +166,10 @@ Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, B
 Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], soft-mask [convert in-frame STOPs to lowercase].
 
 - `--stop_task soft-mask`
+
+Subset ($n$) of total loci count ($N$) processed by each Genewise task. To ensure equivalent workload across tasks and a high level of parallelisation, Genewise operations are split into $T$ tasks, where $T = N/n$ (default: 500).
+
+- `--pairs_per_task 100`
 
 Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
 
@@ -199,13 +216,12 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 ```
 conda activate hi-fever
-mkdir domains; cd domains
+mkdir data/domains; cd data/domains
 wget https://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz
 gunzip Pfam-A.hmm.gz
 # Replace space characters in model description lines, as these are column delimiters in the output table.
 sed -i '/^DESC/ s/ /_/g; s/__/  /' Pfam-A.hmm
 hmmpress Pfam-A.hmm
-cd ..
 ```
 
 ### NCBI nr proteins db
@@ -215,6 +231,7 @@ cd ..
 
 ```
 conda activate hi-fever
+cd data
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
 wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.FULL.gz
 gunzip prot.accession2taxid.FULL.gz
