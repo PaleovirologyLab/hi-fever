@@ -43,9 +43,9 @@ process reciprocal_diamond {
     -q loci-merged-coordinates.fasta \
     -e 1e-5 \
     -k 20 \
-    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums full_sseq | \
-    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal"}' > mixed_hits.txt) | cut -f2,18 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_subset.fasta) | \
-    cut -f1-17 > \
+    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
+    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal"}' > mixed_hits.txt) | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_subset.fasta) | \
+    cut -f1-18 > \
     reciprocal-matches.dmnd.tsv
 
     gzip loci-merged-coordinates.fasta
