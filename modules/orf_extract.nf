@@ -33,7 +33,7 @@ process orf_extract {
             context_ORFs.txt
 
             # Intersect context ORFs with strict feature coordinates, reports:
-            # contig strict_feature_start strict_feature_end coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
+            # locus coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
             bedtools intersect -a $strict_coords -b context_ORFs.txt -wo -sorted | \
             awk 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
