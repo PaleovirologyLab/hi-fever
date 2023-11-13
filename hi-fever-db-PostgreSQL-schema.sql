@@ -8,7 +8,7 @@
 -- Instructions:
 -- 1. Select a server, or create a new one (host = localhost, user = postgres)
 -- 2. Create a new database within the server (e.g., hi-fever-db)
--- 3. Ensure sql data tables are located in a server accessible location (& edit import section of script accordingly, lines 165-177)
+-- 3. Ensure sql data tables are located in a server accessible location (& edit import section of script accordingly, lines 188-202)
 -- 4. Right-click database name in the object explorer -> Query tool -> upload/paste this script and run it
 
 
@@ -161,6 +161,29 @@ CREATE TABLE "hi-fever-schema"."reciprocal-nr" (
 
 ALTER TABLE "hi-fever-schema"."reciprocal-nr" OWNER TO postgres;
 
+CREATE TABLE "hi-fever-schema"."reciprocal-rvdb" (
+    query_locus text NOT NULL,
+    subject_protein text NOT NULL,
+    percent_identity double precision NOT NULL,
+    length bigint NOT NULL,
+    mismatches bigint NOT NULL,
+    gapopens bigint NOT NULL,
+    query_start bigint NOT NULL,
+    query_end bigint NOT NULL,
+    subject_start bigint NOT NULL,
+    subject_end bigint NOT NULL,
+    "e-value" double precision NOT NULL,
+    bitscore double precision NOT NULL,
+    subject_taxids text NOT NULL,
+    subject_scientific_name text NOT NULL,
+    subject_superkingdom text NOT NULL,
+    subject_kingdom text NOT NULL,
+    subject_phylum text NOT NULL,
+    subject_title text NOT NULL
+);
+
+ALTER TABLE "hi-fever-schema"."reciprocal-rvdb" OWNER TO postgres;
+
 
 -- Import data
 
@@ -174,7 +197,9 @@ COPY "locus-to-assembly-junction-table" FROM 'C:/Program Files/PostgreSQL/16/dat
 
 COPY "predicted-orfs" FROM 'C:/Program Files/PostgreSQL/16/data/sql/predicted_ORFs.txt' WITH DELIMITER E'\t' CSV;
 
-COPY "reciprocal-nr" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
+COPY "reciprocal-nr" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-nr-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
+
+COPY "reciprocal-rvdb" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-rvdb-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
 
 
 -- Add constraints
@@ -203,3 +228,5 @@ ALTER TABLE ONLY "hi-fever-schema"."predicted-orfs"
 ALTER TABLE ONLY "hi-fever-schema"."reciprocal-nr"
     ADD CONSTRAINT "reciprocal-nr_query_locus_fkey" FOREIGN KEY (query_locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
 
+ALTER TABLE ONLY "hi-fever-schema"."reciprocal-rvdb"
+    ADD CONSTRAINT "reciprocal-rvdb_query_locus_fkey" FOREIGN KEY (query_locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
