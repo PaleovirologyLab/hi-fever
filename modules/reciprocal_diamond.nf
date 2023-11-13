@@ -3,19 +3,22 @@ process reciprocal_diamond {
     input:
     path strict_fastas_collected
     path context_fastas_collected
-    path reciprocal_db
+    path reciprocal_nr_db
+    path reciprocal_rvdb_db
     path annotated_hits_collected
     path clustered_proteins
 
     output:
-    path "reciprocal-matches.dmnd.tsv"
+    path "reciprocal-nr-matches.dmnd.tsv"
+    path "reciprocal-rvdb-matches.dmnd.tsv"
     path "best_hits.fasta", emit: best_hits_fa_ch
     path "loci-merged-coordinates.fasta.gz", emit: merged_fa_ch
     path "loci-context-coordinates.fasta.gz", emit: context_fa_ch
     path "all_context_coords.bed", emit: context_coords_ch
     path "matches.dmnd.annot.tsv"
     path "best_pairs.txt", emit: pairs_ch
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "reciprocal-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "reciprocal-nr-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
     publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
     publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
 
@@ -33,20 +36,37 @@ process reciprocal_diamond {
     gzip > \
     loci-context-coordinates.fasta.gz
 
-    # Run reciprocal search & extract best reciprocal hit pairs & their alignment length
+    # Run reciprocal nr search, extract best reciprocal hit pairs & their alignment length
 
     diamond blastx \
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
-    -d $reciprocal_db \
+    -d $reciprocal_nr_db \
     -q loci-merged-coordinates.fasta \
     -e 1e-5 \
     -k 20 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
-    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal"}' > mixed_hits.txt) | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_subset.fasta) | \
+    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal-nr"}' > mixed_hits.txt) | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_nr_subset.fasta) | \
     cut -f1-18 > \
-    reciprocal-matches.dmnd.tsv
+    reciprocal-nr-matches.dmnd.tsv
+
+    # Run reciprocal RVDB search, extract best reciprocal hit pairs & their alignment length
+
+    diamond blastx \
+    --$params.diamond_mode \
+    --matrix $params.diamond_matrix \
+    --masking seg \
+    -d $reciprocal_rvdb_db \
+    -q loci-merged-coordinates.fasta \
+    -e 1e-5 \
+    -k 20 \
+    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
+    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal-rvdb"}' >> mixed_hits.txt) | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_rvdb_subset.fasta) | \
+    cut -f1-18 > \
+    reciprocal-rvdb-matches.dmnd.tsv
+
+    # Zip up query file for outdir publication
 
     gzip loci-merged-coordinates.fasta
 
@@ -64,7 +84,8 @@ process reciprocal_diamond {
 
     sort -k2,2 -k3,3nr mixed_hits.txt | \
     sort -u -k2,2 | \
-    tee >(grep reciprocal | cut -f1 | sort | uniq > extract_from_reciprocal.txt) | \
+    tee >(grep reciprocal-nr | cut -f1 | sort | uniq > extract_from_reciprocal-nr.txt) | \
+    tee >(grep reciprocal-rvdb | cut -f1 | sort | uniq > extract_from_reciprocal-rvdb.txt) | \
     tee >(grep forward | cut -f1 | sort | uniq > extract_from_forward.txt) > \
     best_pairs_partial.txt
 
@@ -75,8 +96,12 @@ process reciprocal_diamond {
 
     # Extract best proteins
 
-    seqtk subseq reciprocal_subset.fasta extract_from_reciprocal.txt | \
+    seqtk subseq reciprocal_nr_subset.fasta extract_from_reciprocal-nr.txt | \
     sed 's/ .*//' > \
+    best_hits.fasta
+
+    seqtk subseq reciprocal_rvdb_subset.fasta extract_from_reciprocal-rvdb.txt | \
+    sed 's/ .*//' >> \
     best_hits.fasta
 
     seqtk subseq $clustered_proteins extract_from_forward.txt | \
