@@ -1,6 +1,7 @@
 # Ignore workflow products
 output
 work
+.nextflow*
 
 # Other files
 notes_and_issues.md
