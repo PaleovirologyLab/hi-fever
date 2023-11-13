@@ -10,19 +10,23 @@ if (file("$params.outdir").exists()) {
 }
 
 if (!file("$params.query_file_aa").exists()) {
-    error("Input file '$params.query_file_aa' was not found. Either add it, or specify another query file using --query_file_aa")
+    error("Input file '$params.query_file_aa' was not found. Either add it to the data directory, or specify another query file using --query_file_aa")
 }
 
 if (!file("$params.ftp_file").exists()) {
-    error("Input file '$params.ftp_file' was not found. Either add it, or specify another assembly list using --ftp_file")
+    error("Input file '$params.ftp_file' was not found. Either add it to the data directory, or specify another assembly list using --ftp_file")
 }
 
-if (!file("$params.reciprocal_db").exists()) {
-    error("Input file '$params.reciprocal_db' was not found. Either add it, or specify another reciprocal database using --reciprocal_db")
+if (!file("$params.reciprocal_nr_db").exists()) {
+    error("Input file '$params.reciprocal_nr_db' was not found. Either add it to the data directory, or specify another reciprocal nr database using --reciprocal_nr_db")
+}
+
+if (!file("$params.reciprocal_rvdb_db").exists()) {
+    error("Input file '$params.reciprocal_rvdb_db' was not found. Either add it to the data directory, or specify another reciprocal RVDB database using --reciprocal_rvdb_db")
 }
 
 if (!file("$params.phmms").exists()) {
-    error("Input file '$params.phmms' was not found. Either add it, or specify another phmm database using --phmms")
+    error("Input file '$params.phmms' was not found. Either add it to the data directory, or specify another phmm database using --phmms")
 }
 
 // Import modules
