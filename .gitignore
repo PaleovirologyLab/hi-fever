@@ -1,0 +1,6 @@
+# Ignore workflow products
+output
+work
+
+# Other files
+notes_and_issues.md
