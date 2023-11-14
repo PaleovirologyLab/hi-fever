@@ -37,9 +37,9 @@ To run with presets, ensure the following are in the data directory:
 
 >`domains` pHMM directory [[more information]](#phmm-library)
 
->`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#Reciprocal-databases-(NCBI-nr-&-RVDB))
+>`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#reciprocal-databases-ncbi-nr--rvdb)
 
->`rvdbv26_clustered_wtaxa.dmnd` RVDB viral proteins database [[more information]](#Reciprocal-databases-(NCBI-nr-&-RVDB))
+>`rvdbv26_clustered_wtaxa.dmnd` RVDB viral proteins database [[more information]](#reciprocal-databases-ncbi-nr--rvdb)
 
 ### Option 1: Run from a Conda environment (e.g., for working locally or on a HPC cluster)
 
