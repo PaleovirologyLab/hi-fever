@@ -9,16 +9,16 @@ Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in 
 - Protein-to-DNA based search
 - Designed to function with 1000's of input assemblies
 - Scales from laptop to cluster or cloud
-- Conda & Docker compatible
+- Conda or Docker compatible
 
 Outputs include:
 
 - Genomic coordinates of candidate EVEs
 - Best forward and reciprocal hits, with integrated taxonomy
-- Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware)
+- Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware), with extension beyond original hit
+- Open reading frame detection, with extension beyond original hit
 - Extraction of flanking sequence
-- Open reading frame detection and extension beyond original hit
-- Assembly information
+- Assembly metadata
 - Predicted EVE protein domains
 
 ## To install and run with presets
@@ -37,7 +37,9 @@ To run with presets, ensure the following are in the data directory:
 
 >`domains` pHMM directory [[more information]](#phmm-library)
 
->`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#ncbi-nr-proteins-db)
+>`nr_clustered_wtaxa.dmnd` NCBI nr proteins database [[more information]](#Reciprocal-databases-(NCBI-nr-&-RVDB))
+
+>`rvdbv26_clustered_wtaxa.dmnd` RVDB viral proteins database [[more information]](#Reciprocal-databases-(NCBI-nr-&-RVDB))
 
 ### Option 1: Run from a Conda environment (e.g., for working locally or on a HPC cluster)
 
@@ -123,9 +125,13 @@ Name of output directory (default: output).
 
 - `--outdir 2023-07-31-16:24-herpesviridae_vs_tarsier`
 
-Custom reciprocal BLASTp database (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
+Reciprocal DIAMOND database #1, NCBI nr (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
 
-- `--reciprocal_db data/nr.dmnd`
+- `--reciprocal_nr_db data/nr.dmnd`
+
+Reciprocal DIAMOND database #2, RVDB viral proteins (DIAMOND formatted, default: rvdbv26_clustered_wtaxa.dmnd).
+
+- `--reciprocal_rvdb_db data/rvdb.dmnd`
 
 Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%).
 
@@ -224,18 +230,31 @@ sed -i '/^DESC/ s/ /_/g; s/__/  /' Pfam-A.hmm
 hmmpress Pfam-A.hmm
 ```
 
-### NCBI nr proteins db
+### Reciprocal databases (NCBI nr & RVDB)
 
-- For the reciprocal DIAMOND BLASTp stage, a local nr or clustered nr DIAMOND formatted database is recommended.
-- A clustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering). To download and format:
+- For the reciprocal DIAMOND searches, a local DIAMOND formatted nr or clustered nr database is required, as well as a DIAMOND formatted copy of the RVDB proteins database.
+- A preclustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering).
+- RVDB was developed by Arifa Khan's group at CBER. For hi-fever, RVDB-prot is required, a protein version maintained at the Institut Pasteur [with archives available here](https://rvdb-prot.pasteur.fr).
+- The commands below offer a template for downloading and formatting these databases, though it is recommended to edit them to install the most recent database releases.
 
 ```
 conda activate hi-fever
 cd data
+# nr database
 wget https://files.osf.io/v1/resources/tejwd/providers/googledrive/nr_rep_seq.fasta.gz
 wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/prot.accession2taxid.FULL.gz
 gunzip prot.accession2taxid.FULL.gz
 wget https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdmp.zip
 unzip taxdmp.zip
 diamond makedb --in nr_rep_seq.fasta.gz -d nr_clustered_wtaxa --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp --threads 16
+# RVDB
+wget https://rvdb-prot.pasteur.fr/files/U-RVDBv26.0-prot.fasta.xz
+unxz U-RVDBv26.0-prot.fasta.xz
+mmseqs createdb U-RVDBv26.0-prot.fasta DB
+mmseqs linclust --min-seq-id 0.98 --cov-mode 1 -c 0.90 DB DB_clu tmp
+mmseqs createsubdb DB_clu DB DB_clu_rep
+mmseqs convert2fasta DB_clu_rep DB_clu_rep.fasta
+mv DB_clu_rep.fasta U-RVDBv26.0-prot-clustered-minid0.98-cov0.90.fasta
+awk '{if($0~">") {split($0,a,"|"); print ">"a[3],substr($0,2,length($0))} else print $0}' U-RVDBv26.0-prot-clustered-minid0.98-cov0.90.fasta > U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fasta
+diamond makedb --in U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fasta -d rvdbv26_clustered_wtaxa.dmnd --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp
 ```
