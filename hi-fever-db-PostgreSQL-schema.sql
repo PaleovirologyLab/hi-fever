@@ -151,11 +151,11 @@ CREATE TABLE "hi-fever-schema"."reciprocal-nr" (
     subject_end bigint NOT NULL,
     "e-value" double precision NOT NULL,
     bitscore double precision NOT NULL,
-    subject_taxids text NOT NULL,
-    subject_scientific_name text NOT NULL,
-    subject_superkingdom text NOT NULL,
-    subject_kingdom text NOT NULL,
-    subject_phylum text NOT NULL,
+    subject_taxids text,
+    subject_scientific_name text,
+    subject_superkingdom text,
+    subject_kingdom text,
+    subject_phylum text,
     subject_title text NOT NULL
 );
 
@@ -174,11 +174,11 @@ CREATE TABLE "hi-fever-schema"."reciprocal-rvdb" (
     subject_end bigint NOT NULL,
     "e-value" double precision NOT NULL,
     bitscore double precision NOT NULL,
-    subject_taxids text NOT NULL,
-    subject_scientific_name text NOT NULL,
-    subject_superkingdom text NOT NULL,
-    subject_kingdom text NOT NULL,
-    subject_phylum text NOT NULL,
+    subject_taxids text,
+    subject_scientific_name text,
+    subject_superkingdom text,
+    subject_kingdom text,
+    subject_phylum text,
     subject_title text NOT NULL
 );
 
