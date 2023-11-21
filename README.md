@@ -258,3 +258,15 @@ mv DB_clu_rep.fasta U-RVDBv26.0-prot-clustered-minid0.98-cov0.90.fasta
 awk '{if($0~">") {split($0,a,"|"); print ">"a[3],substr($0,2,length($0))} else print $0}' U-RVDBv26.0-prot-clustered-minid0.98-cov0.90.fasta > U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fasta
 diamond makedb --in U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fasta -d rvdbv26_clustered_wtaxa.dmnd --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp
 ```
+
+## Create an SQL database of results
+
+To create a PostgreSQL database from the hi-fever workflow outputs, an SQL schema generation script is provided (hi-fever-db-PostgreSQL-schema.sql).
+
+Steps to run:
+
+1. Install PostgreSQL.
+2. Create a local server (e.g., name = hi-fever-server, host = localhost, user = postgres).
+3. Create a new database within the server (e.g., hi-fever-db).
+4. Ensure hi-fever output data tables (by default found in output/sql) are located in a server accessible location on your system (& edit the import section of the script to specify this).
+5. Open the SQL query interpreter for the hi-fever-db database (e.g., by right clicking the db name and selecting "Query tool"), then paste in the script and run it. This will generate the table schema and its constraints, and import the data tables.
