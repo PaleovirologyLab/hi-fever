@@ -67,6 +67,50 @@ CREATE TABLE "hi-fever-schema"."assembly-statistics" (
 
 ALTER TABLE "hi-fever-schema"."assembly-statistics" OWNER TO postgres;
 
+CREATE TABLE "hi-fever-schema"."assembly-metadata" (
+    "assembly-ID" text NOT NULL,
+    "assembly_accession" text NOT NULL,
+    "bioproject" text NOT NULL,
+    "biosample" text NOT NULL,
+    "wgs_master" text NOT NULL,
+    "refseq_category" text NOT NULL,
+    "taxid" text NOT NULL,
+    "species_taxid" text NOT NULL,
+    "organism_name" text NOT NULL,
+    "infraspecific_name" text NOT NULL,
+    "isolate" text NOT NULL,
+    "version_status" text NOT NULL,
+    "assembly_level" text NOT NULL,
+    "release_type" text NOT NULL,
+    "genome_rep" text NOT NULL,
+    "seq_rel_date" text NOT NULL,
+    "asm_name" text NOT NULL,
+    "asm_submitter" text NOT NULL,
+    "gbrs_paired_asm" text NOT NULL,
+    "paired_asm_comp" text NOT NULL,
+    "ftp_path" text NOT NULL,
+    "excluded_from_refseq" text NOT NULL,
+    "relation_to_type_material" text NOT NULL,
+    "asm_not_live_date" text NOT NULL,
+    "assembly_type" text NOT NULL,
+    "group" text NOT NULL,
+    "genome_size" text NOT NULL,
+    "genome_size_ungapped" text NOT NULL,
+    "gc_percent" text NOT NULL,
+    "replicon_count" text NOT NULL,
+    "scaffold_count" text NOT NULL,
+    "contig_count" text NOT NULL,
+    "annotation_provider" text NOT NULL,
+    "annotation_name" text NOT NULL,
+    "annotation_date" text NOT NULL,
+    "total_gene_count" text NOT NULL,
+    "protein_coding_gene_count" text NOT NULL,
+    "non_coding_gene_count" text NOT NULL,
+    "pubmed_id" text NOT NULL
+);
+
+ALTER TABLE "hi-fever-schema"."assembly-metadata" OWNER TO postgres;
+
 CREATE TABLE "hi-fever-schema"."best-forward-hits-pHMM" (
     "protein_ID" text NOT NULL,
     protein_start bigint NOT NULL,
@@ -189,6 +233,8 @@ ALTER TABLE "hi-fever-schema"."reciprocal-rvdb" OWNER TO postgres;
 
 COPY "assembly-statistics" FROM 'C:/Program Files/PostgreSQL/16/data/sql/assembly_stats.tsv' WITH DELIMITER E'\t' CSV;
 
+COPY "assembly-metadata" FROM 'C:/Program Files/PostgreSQL/16/data/sql/assembly_metadata.tsv' WITH DELIMITER E'\t' CSV;
+
 COPY "best-forward-hits-pHMM" FROM 'C:/Program Files/PostgreSQL/16/data/sql/matches.dmnd.annot.tsv' WITH DELIMITER E'\t' NULL '.' CSV;
 
 COPY "genewise" FROM 'C:/Program Files/PostgreSQL/16/data/sql/genewise.tsv' WITH DELIMITER E'\t' CSV;
@@ -217,7 +263,10 @@ ALTER TABLE ONLY "hi-fever-schema"."best-forward-hits-pHMM"
     ADD CONSTRAINT "best-forward-hits-pHMM_locus_fkey" FOREIGN KEY (locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."locus-to-assembly-junction-table"
-    ADD CONSTRAINT "link-to-assembly-stats" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
+    ADD CONSTRAINT "link-junction-table-to-assembly-stats" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
+
+ALTER TABLE ONLY "hi-fever-schema"."assembly-metadata"
+    ADD CONSTRAINT "link-metadata-to-assembly-stats" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."locus-to-assembly-junction-table"
     ADD CONSTRAINT "link-to-genewise" FOREIGN KEY (locus) REFERENCES "hi-fever-schema".genewise(locus) NOT VALID;
