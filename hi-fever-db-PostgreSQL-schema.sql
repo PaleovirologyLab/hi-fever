@@ -187,15 +187,15 @@ ALTER TABLE "hi-fever-schema"."reciprocal-rvdb" OWNER TO postgres;
 
 -- Import data
 
-COPY "assembly-statistics" FROM 'C:/Program Files/PostgreSQL/16/data/sql/assembly_stats.txt' WITH DELIMITER E'\t' CSV;
+COPY "assembly-statistics" FROM 'C:/Program Files/PostgreSQL/16/data/sql/assembly_stats.tsv' WITH DELIMITER E'\t' CSV;
 
 COPY "best-forward-hits-pHMM" FROM 'C:/Program Files/PostgreSQL/16/data/sql/matches.dmnd.annot.tsv' WITH DELIMITER E'\t' NULL '.' CSV;
 
-COPY "genewise" FROM 'C:/Program Files/PostgreSQL/16/data/sql/genewise.txt' WITH DELIMITER E'\t' CSV;
+COPY "genewise" FROM 'C:/Program Files/PostgreSQL/16/data/sql/genewise.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY "locus-to-assembly-junction-table" FROM 'C:/Program Files/PostgreSQL/16/data/sql/locus_assembly_map.txt' WITH DELIMITER E'\t' CSV;
+COPY "locus-to-assembly-junction-table" FROM 'C:/Program Files/PostgreSQL/16/data/sql/locus_assembly_map.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY "predicted-orfs" FROM 'C:/Program Files/PostgreSQL/16/data/sql/predicted_ORFs.txt' WITH DELIMITER E'\t' CSV;
+COPY "predicted-orfs" FROM 'C:/Program Files/PostgreSQL/16/data/sql/predicted_ORFs.tsv' WITH DELIMITER E'\t' CSV;
 
 COPY "reciprocal-nr" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-nr-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
 
