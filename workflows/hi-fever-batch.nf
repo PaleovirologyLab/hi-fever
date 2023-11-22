@@ -63,7 +63,7 @@ workflow BATCH {
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
 
     // Get stats about downloaded assembly files
-    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "gs://${params.bucket_name}/${params.outdir}")
+    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "gs://${params.bucket_name}/${params.outdir}")
 
     // Run main EVE search, annotate potential domains, and extract FASTAs
     diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
