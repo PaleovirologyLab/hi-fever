@@ -1,8 +1,8 @@
 process get_assembly_metadata {
 
     output:
-    path "assembly_metadata.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "assembly_metadata.tsv"
+    path "assembly_metadata.tsv", emit: assembly_metadata_ch
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "assembly_metadata.tsv"
 
     """
 
