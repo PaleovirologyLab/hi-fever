@@ -34,6 +34,7 @@ include { build_db } from '../modules/build_db.nf'
 include { hmmer } from '../modules/hmmer.nf'
 include { parse_ftp } from '../modules/parse_ftp.nf'
 include { download_assemblies } from '../modules/download_assemblies.nf'
+include { get_assembly_metadata } from '../modules/get_assembly_metadata.nf'
 include { assembly_stats } from '../modules/assembly_stats.nf'
 include { diamond } from '../modules/diamond.nf'
 include { intersect_domains_merge_extract } from '../modules/intersect_domains_merge_extract.nf'
@@ -62,6 +63,9 @@ workflow HIFEVER {
 
     // Unpack user supplied ftp list and begin downloading assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
+
+    // Get assembly metadata
+    get_assembly_metadata()
 
     // Get stats about downloaded assembly files
     assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "${params.outdir}/sql")
