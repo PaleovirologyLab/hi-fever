@@ -8,7 +8,7 @@ process intersect_domains_merge_extract {
     path "*_matches.dmnd.annot.tsv", emit: annot_tsv_ch
     path "*_strict.fasta", emit: strict_fa_ch
     path "*_context.fasta", emit: context_fa_ch
-    path "*_locus_assembly_map.txt", emit: locus_assembly_map_ch
+    path "*_locus_assembly_map.tsv", emit: locus_assembly_map_ch
 
     """
 
@@ -64,7 +64,7 @@ process intersect_domains_merge_extract {
     # Generate assemblyID to locus dictionary
 
     awk -v var="\$assemblyID" 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, var}' strict_coords.bed > \
-    "\${assemblyID}_locus_assembly_map.txt"
+    "\${assemblyID}_locus_assembly_map.tsv"
 
     # Clean up database files
 
