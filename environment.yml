@@ -12,7 +12,7 @@ dependencies:
   - blast=2.14.0=pl5321h6f7f691_2
   - bzip2=1.0.8=h7f98852_4
   - c-ares=1.11.0=h470a237_1
-  - ca-certificates=2023.7.22=hbcca054_0
+  - ca-certificates=2023.08.22=h06a4308_0
   - coreutils=8.25=1
   - curl=7.71.1=he644dc0_3
   - diamond=2.1.8=h43eeafb_0
@@ -67,7 +67,7 @@ dependencies:
   - ncurses=6.4=hcb278e6_0
   - nextflow=23.04.1=h2a3209d_3
   - openjdk=11.0.1=h516909a_1016
-  - openssl=1.1.1u=hd590300_0
+  - openssl=1.1.1w=h7f8727e_0
   - pcre=8.45=h9c3ff4c_0
   - pcre2=10.40=hc3806b6_0
   - perl=5.32.1=4_hd590300_perl5
@@ -97,6 +97,7 @@ dependencies:
   - seqtk=1.4=he4a0461_1
   - setuptools=68.0.0=pyhd8ed1ab_0
   - sqlite=3.42.0=h2c6b66d_0
+  - taxonkit=0.15.0=h9ee0642_0
   - tk=8.6.12=h27826a3_0
   - tzdata=2023c=h71feb2d_0
   - wget=1.20.3=ha56f1ee_1
