@@ -68,7 +68,7 @@ workflow HIFEVER {
     get_assembly_metadata()
 
     // Get stats about downloaded assembly files
-    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.txt', newLine: false, storeDir: "${params.outdir}/sql")
+    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
     // Run main EVE search, annotate potential domains, and extract FASTAs
     diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
@@ -101,7 +101,7 @@ workflow HIFEVER {
             best_hit_proteins_val,
             strict_fastas_val,
             context_fastas_val,
-            context_coords_val).collectFile(name: 'genewise.txt', newLine: false, storeDir: "${params.outdir}/sql")
+            context_coords_val).collectFile(name: 'genewise.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
     // Produce final outputs
     publish(locus_assembly_map_collected, \
