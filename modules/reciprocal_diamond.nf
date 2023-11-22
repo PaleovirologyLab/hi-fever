@@ -9,16 +9,16 @@ process reciprocal_diamond {
     path clustered_proteins
 
     output:
-    path "reciprocal-nr-matches.dmnd.tsv"
-    path "reciprocal-rvdb-matches.dmnd.tsv"
+    path "reciprocal-nr-matches.dmnd.tsv", emit: reciprocal_nr_matches_ch
+    path "reciprocal-rvdb-matches.dmnd.tsv", emit: reciprocal_rvdb_matches_ch
     path "best_hits.fasta", emit: best_hits_fa_ch
     path "loci-merged-coordinates.fasta.gz", emit: merged_fa_ch
     path "loci-context-coordinates.fasta.gz", emit: context_fa_ch
     path "all_context_coords.bed", emit: context_coords_ch
     path "matches.dmnd.annot.tsv"
     path "best_pairs.txt", emit: pairs_ch
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "reciprocal-nr-matches.dmnd.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
     publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
     publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
 
