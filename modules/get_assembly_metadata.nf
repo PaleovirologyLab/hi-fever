@@ -23,11 +23,11 @@ process get_assembly_metadata {
 
     # Remove header lines and concatenate
 
-    for i in ??_assembly_summary_*; do grep -v "README_assembly_summary\|#assembly_accession" $i >> metadata_partial.txt; done
+    for i in ??_assembly_summary_*; do grep -v "README_assembly_summary\\|#assembly_accession" \$i >> metadata_partial.txt; done
 
     # Extract AssemblyID
 
-    cut -f20 metadata_partial.txt | sed 's/.*\///g' > assemblyID
+    cut -f20 metadata_partial.txt | sed 's/.*\\///g' > assemblyID
 
     # Paste
 
