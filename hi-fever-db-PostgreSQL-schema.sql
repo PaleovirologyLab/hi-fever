@@ -234,7 +234,7 @@ CREATE TABLE "hi-fever-schema"."taxonomy" (
     kingdom text NOT NULL,
     phylum text NOT NULL,
     class text NOT NULL,
-    order text NOT NULL,
+    "order" text NOT NULL,
     family text NOT NULL,
     genus text NOT NULL,
     species text NOT NULL
