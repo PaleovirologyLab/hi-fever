@@ -27,7 +27,7 @@ process download_assemblies {
                         then
                                 echo "\$assemblyFile FAILED md5check \$max_attempts times, exiting"; exit 1
                         else
-                                echo "\$assemblyFile FAILED md5check"; rm \$assemblyFile*; count=\$count +1; md5check_function
+                                echo "\$assemblyFile FAILED md5check"; rm \$assemblyFile*; ((count=count+1)); md5check_function
                         fi
         else
                 echo "\$assemblyFile PASSED md5check"; rm \$assemblyFile.md5
