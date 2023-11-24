@@ -52,7 +52,6 @@ workflow HIFEVER {
     def query_ch = Channel.fromPath(params.query_file_aa)
     def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
     def ftp_ch = Channel.fromPath(params.ftp_file)
-    def ftp_ch2 = Channel.fromPath(params.ftp_file)
     def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db)
     def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db)
 
@@ -105,8 +104,8 @@ workflow HIFEVER {
             context_fastas_val,
             context_coords_val).collectFile(name: 'genewise.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
-    //Produce taxonomy table for reciprocal searches and host assemblies
-    build_taxonomy_table(ftp_ch2,
+    // Produce taxonomy table for reciprocal searches and host assemblies
+    build_taxonomy_table(ftp_ch,
             get_assembly_metadata.out.assembly_metadata_ch,
             reciprocal_diamond.out.reciprocal_nr_matches_ch,
             reciprocal_diamond.out.reciprocal_rvdb_matches_ch)
