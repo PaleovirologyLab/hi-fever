@@ -8,7 +8,7 @@
 -- Instructions:
 -- 1. Select a server, or create a new one (host = localhost, user = postgres)
 -- 2. Create a new database within the server (e.g., hi-fever-db)
--- 3. Ensure sql data tables are located in a server accessible location (& edit import section of script accordingly, lines 188-202)
+-- 3. Ensure sql data tables are located in a server accessible location (& edit import section of script accordingly, lines 246-264)
 -- 4. Right-click database name in the object explorer -> Query tool -> upload/paste this script and run it
 
 
@@ -228,6 +228,20 @@ CREATE TABLE "hi-fever-schema"."reciprocal-rvdb" (
 
 ALTER TABLE "hi-fever-schema"."reciprocal-rvdb" OWNER TO postgres;
 
+CREATE TABLE "hi-fever-schema"."taxonomy" (
+    species_taxid text NOT NULL,
+    superkingdom text NOT NULL,
+    kingdom text NOT NULL,
+    phylum text NOT NULL,
+    class text NOT NULL,
+    order text NOT NULL,
+    family text NOT NULL,
+    genus text NOT NULL,
+    species text NOT NULL
+);
+
+ALTER TABLE "hi-fever-schema"."taxonomy" OWNER TO postgres;
+
 
 -- Import data
 
@@ -247,8 +261,10 @@ COPY "reciprocal-nr" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-nr
 
 COPY "reciprocal-rvdb" FROM 'C:/Program Files/PostgreSQL/16/data/sql/reciprocal-rvdb-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
 
+COPY "taxonomy" FROM 'C:/Program Files/PostgreSQL/16/data/sql/taxonomy_table.tsv' WITH DELIMITER E'\t' CSV;
 
--- Add constraints
+
+-- Add primary key constraints
 
 ALTER TABLE ONLY "hi-fever-schema"."assembly-statistics"
     ADD CONSTRAINT "assembly-statistics_pkey" PRIMARY KEY ("assembly-ID");
@@ -259,17 +275,26 @@ ALTER TABLE ONLY "hi-fever-schema".genewise
 ALTER TABLE ONLY "hi-fever-schema"."locus-to-assembly-junction-table"
     ADD CONSTRAINT "locus-to-assembly-junction-table_pkey" PRIMARY KEY (locus);
 
+ALTER TABLE ONLY "hi-fever-schema"."taxonomy"
+    ADD CONSTRAINT "species-taxid_pkey" PRIMARY KEY (species_taxid);
+
+
+-- Add foreign key constraints
+
 ALTER TABLE ONLY "hi-fever-schema"."best-forward-hits-pHMM"
     ADD CONSTRAINT "best-forward-hits-pHMM_locus_fkey" FOREIGN KEY (locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."locus-to-assembly-junction-table"
-    ADD CONSTRAINT "link-junction-table-to-assembly-stats" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
+    ADD CONSTRAINT "link-junction-table-to-assembly-stats_fkey" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."assembly-metadata"
-    ADD CONSTRAINT "link-metadata-to-assembly-stats" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
+    ADD CONSTRAINT "link-metadata-to-assembly-stats_fkey" FOREIGN KEY ("assembly-ID") REFERENCES "hi-fever-schema"."assembly-statistics"("assembly-ID") NOT VALID;
+
+ALTER TABLE ONLY "hi-fever-schema"."assembly-metadata"
+    ADD CONSTRAINT "link-metadata-to-full-taxonomy_fkey" FOREIGN KEY (species_taxid) REFERENCES "hi-fever-schema"."taxonomy"(species_taxid) NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."locus-to-assembly-junction-table"
-    ADD CONSTRAINT "link-to-genewise" FOREIGN KEY (locus) REFERENCES "hi-fever-schema".genewise(locus) NOT VALID;
+    ADD CONSTRAINT "link-to-genewise_fkey" FOREIGN KEY (locus) REFERENCES "hi-fever-schema".genewise(locus) NOT VALID;
 
 ALTER TABLE ONLY "hi-fever-schema"."predicted-orfs"
     ADD CONSTRAINT "predicted-orfs_locus_fkey" FOREIGN KEY (locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
@@ -277,5 +302,11 @@ ALTER TABLE ONLY "hi-fever-schema"."predicted-orfs"
 ALTER TABLE ONLY "hi-fever-schema"."reciprocal-nr"
     ADD CONSTRAINT "reciprocal-nr_query_locus_fkey" FOREIGN KEY (query_locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
 
+ALTER TABLE ONLY "hi-fever-schema"."reciprocal-nr"
+    ADD CONSTRAINT "link-recip-nr-to-full-taxonomy_fkey" FOREIGN KEY (subject_taxids) REFERENCES "hi-fever-schema"."taxonomy"(species_taxid) NOT VALID;
+
 ALTER TABLE ONLY "hi-fever-schema"."reciprocal-rvdb"
     ADD CONSTRAINT "reciprocal-rvdb_query_locus_fkey" FOREIGN KEY (query_locus) REFERENCES "hi-fever-schema"."locus-to-assembly-junction-table"(locus) NOT VALID;
+
+ALTER TABLE ONLY "hi-fever-schema"."reciprocal-rvdb"
+    ADD CONSTRAINT "link-recip-rvdb-to-full-taxonomy_fkey" FOREIGN KEY (subject_taxids) REFERENCES "hi-fever-schema"."taxonomy"(species_taxid) NOT VALID;
