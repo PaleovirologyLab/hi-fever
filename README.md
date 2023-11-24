@@ -7,18 +7,19 @@
 Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. Some features:
 
 - Protein-to-DNA based search
-- Designed to function with 1000's of input assemblies
+- Designed to function with tens of thousands of input assemblies
 - Scales from laptop to cluster or cloud
 - Conda or Docker compatible
 
 Outputs include:
 
 - Genomic coordinates of candidate EVEs
-- Best forward and reciprocal hits, with integrated taxonomy
+- Best forward and reciprocal hits
+- Taxonomy tables for reciprocal hits & input assemblies
 - Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware), with extension beyond original hit
 - Open reading frame detection, with extension beyond original hit
 - Extraction of flanking sequence
-- Assembly metadata
+- Assembly metadata & statistics
 - Predicted EVE protein domains
 
 ## To install and run with presets
