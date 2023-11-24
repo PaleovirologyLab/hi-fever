@@ -21,7 +21,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_
 COPY environment.yml .
 
 # Update conda and create the hi-fever environment
-RUN conda install conda=23.7.3 \
+RUN conda install conda=23.10.0 \
     && conda env create -f environment.yml \
     && conda clean --all --yes
 
