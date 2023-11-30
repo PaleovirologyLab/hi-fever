@@ -118,7 +118,7 @@ Custom ftp file (default: ftp_list.txt).
 
 - `--ftp_file data/assemblies.txt`
 
-Location of custom pHMM library for query domain annotation (default: domains).
+Location of custom pHMM library for query domain annotation (default: data/domains).
 
 - `--phmms data/Pfam-32`
 
@@ -126,11 +126,11 @@ Name of output directory (default: output).
 
 - `--outdir 2023-07-31-16:24-herpesviridae_vs_tarsier`
 
-Reciprocal DIAMOND database #1, NCBI nr (DIAMOND formatted, default: nr_clustered_wtaxa.dmnd).
+Reciprocal DIAMOND database #1, NCBI nr (DIAMOND formatted, default: data/nr_clustered_wtaxa.dmnd).
 
 - `--reciprocal_nr_db data/nr.dmnd`
 
-Reciprocal DIAMOND database #2, RVDB viral proteins (DIAMOND formatted, default: rvdbv26_clustered_wtaxa.dmnd).
+Reciprocal DIAMOND database #2, RVDB viral proteins (DIAMOND formatted, default: data/rvdbv26_clustered_wtaxa.dmnd).
 
 - `--reciprocal_rvdb_db data/rvdb.dmnd`
 
