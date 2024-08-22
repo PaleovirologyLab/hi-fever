@@ -22,6 +22,7 @@ nextflow.enable.dsl=2
 
 include { HIFEVER } from './workflows/hi-fever.nf'
 include { BATCH } from './workflows/hi-fever-batch.nf'
+include { SINGLE } from './workflows/hi-fever-single.nf'
 
 //  Workflow definition
 
@@ -32,5 +33,9 @@ workflow {
 
     else if ( "$params.entry" == "BATCH") {
     BATCH ()
+    }
+
+    else if ( "$params.entry" == "SINGLE") {
+    SINGLE ()
     }
 }

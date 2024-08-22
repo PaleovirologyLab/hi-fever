@@ -22,7 +22,7 @@ process hmmer {
 
     # Run HMM search
 
-    hmmsearch --noali --notextw --domtblout tmp/raw_domains.txt $profile_dir/*.hmm $clustered_fasta 1> /dev/null
+    hmmsearch --cpu 40 --noali --notextw --domtblout tmp/raw_domains.txt $profile_dir/*.hmm $clustered_fasta 1> /dev/null
 
     # Merge overlapping query protein alignments, keep best (by bitscore)
 

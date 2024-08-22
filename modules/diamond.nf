@@ -12,21 +12,29 @@ process diamond {
 
     db=$db
     assembly=$assembly
+    chunks=\$(echo \$assembly | sed 's/_genomic.*/_genomic_chunks.fna.gz/')
     cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / $params.diamond_forks : 1}')
+
+    seqkit sliding -s $params.chunk_size -W $params.chunk_size -g $assembly -o \$chunks
 
     diamond blastx \
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
     -d \$db \
-    -q \$assembly \
-    -o matches.dmnd.tsv \
+    -q \$chunks \
+    -o prelim.matches.tsv \
     -p \$cpu_count \
+    -max-target-seqs 10000 \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
+
+    prelim.matches.tsv | sed 's/-/\\t/' | awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' > matches.reformatted.dmnd.tsv &
 
     gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
 
     wait
+
+    #rm \$chunks
 
     rm "\$(readlink -f \$assembly)"
 
