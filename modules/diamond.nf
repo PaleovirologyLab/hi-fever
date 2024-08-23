@@ -23,18 +23,18 @@ process diamond {
     --masking seg \
     -d \$db \
     -q \$chunks \
-    -o prelim.matches.tsv \
+    -o matches.out \
     -p \$cpu_count \
-    -max-target-seqs 10000 \
+    --max-target-seqs 10000 \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
-
-    prelim.matches.tsv | sed 's/-/\\t/' | awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' > matches.reformatted.dmnd.tsv &
 
     gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
 
     wait
 
-    #rm \$chunks
+    sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' > matches.reformatted.dmnd.tsv
+
+    rm \$chunks
 
     rm "\$(readlink -f \$assembly)"
 

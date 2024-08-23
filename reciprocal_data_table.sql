@@ -50,7 +50,7 @@ CREATE TABLE potential_output AS
 SELECT query_locus, "database",
 subject_protein,
 --subject_title,
-COALESCE(SUBSTRING(subject_title FROM 'RecName: Full=(.+?);'),REGEXP_REPLACE(subject_title, '.*\:\s', '')) AS subject_title_clean,
+REGEXP_REPLACE(COALESCE(SUBSTRING(subject_title FROM 'RecName: Full=(.+?);'),REGEXP_REPLACE(subject_title, '.*\:\s', '')), 'isoform.*$|,\spartial|^putative\s', '') AS subject_title_clean,
 domains_i_evalue_best, 
 domains_bitscore_best, model_names, model_descriptions, model_accs, percent_identity, "length", mismatches,
 gapopens, e_value, bitscore,
