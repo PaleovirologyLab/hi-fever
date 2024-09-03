@@ -26,19 +26,19 @@ include { HIFEVERFAST } from './workflows/hi-fever-fast.nf'
 include { SINGLE } from './workflows/hi-fever-single.nf'
 
 //  Workflow definition
-
 workflow {
 
-    if ( "$params.entry" == "FAST" ) {
-    HIFEVERFAST ()
-    }
+	if ( "$params.entry" == "FAST" ) {
+	HIFEVERFAST ()
+	}
 
-    else if ( "$params.entry" == "SINGLE" ) {
-    SINGLE ()
-    }
-	
+	else if ( "$params.entry" == "SINGLE" ) {
+	SINGLE ()
+	}
+
 	else if ( "$params.entry" == "HIFEVER" ) {
 	HIFEVER ()
 	}
 	
 }
+
