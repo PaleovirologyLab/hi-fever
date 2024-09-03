@@ -10,6 +10,7 @@ GitHub: https://github.com/Paleovirology/hi-fever
 Maintainers:
 - Cormac Kinsella (cormac.kinsella@evobio.eu)
 - José Gabriel Niño Barreat (jose.ninobarreat@biology.ox.ac.uk)
+- Emma Harding (emma.harding@biology.ox.ac.uk)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -21,21 +22,23 @@ nextflow.enable.dsl=2
 // Import workflow scripts
 
 include { HIFEVER } from './workflows/hi-fever.nf'
-include { BATCH } from './workflows/hi-fever-batch.nf'
+include { HIFEVERFAST } from './workflows/hi-fever-fast.nf'
 include { SINGLE } from './workflows/hi-fever-single.nf'
 
 //  Workflow definition
 
 workflow {
-    if ( "$params.entry" == "LOCAL" ) {
-    HIFEVER ()
+
+    if ( "$params.entry" == "FAST" ) {
+    HIFEVERFAST ()
     }
 
-    else if ( "$params.entry" == "BATCH") {
-    BATCH ()
-    }
-
-    else if ( "$params.entry" == "SINGLE") {
+    else if ( "$params.entry" == "SINGLE" ) {
     SINGLE ()
     }
+	
+	else if ( "$params.entry" == "HIFEVER" ) {
+	HIFEVER ()
+	}
+	
 }
