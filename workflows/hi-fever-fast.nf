@@ -49,7 +49,7 @@ workflow HIFEVERFAST {
 
     // Define channels
     def clustered_query_ch = Channel.fromPath(params.clustered_query_aa)
-	  def query_hmm_profiles_ch = Channel.fromPath(params.query_hmms)
+    def query_hmm_profiles_ch = Channel.fromPath(params.query_hmms)
     def ftp_ch = Channel.fromPath(params.ftp_file)
     def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db)
     def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db)
