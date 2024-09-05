@@ -25,7 +25,7 @@ process diamond {
     -q \$chunks \
     -o matches.out \
     -p \$cpu_count \
-    --max-target-seqs 10000 \
+    --max-target-seqs 1000 \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
 
     gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
