@@ -28,6 +28,7 @@ include { SINGLEFAST} from './workflows/hi-fever-single-fast.nf'
 
 //  Workflow definition
 workflow {
+    
     if ( "$params.entry" == "LOCAL" ) {
     HIFEVER ()
     }
