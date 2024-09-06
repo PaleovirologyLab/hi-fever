@@ -32,7 +32,7 @@ workflow {
     HIFEVER ()
     }
 
-    if ( "$params.entry" == "FAST" ) {
+    else if ( "$params.entry" == "FAST" ) {
 	HIFEVERFAST ()
 	}
 
