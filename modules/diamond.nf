@@ -34,9 +34,9 @@ process diamond {
 
     sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' > matches.reformatted.dmnd.tsv
 
-    rm \$chunks
+    #rm \$chunks
 
-    rm "\$(readlink -f \$assembly)"
+    #rm "\$(readlink -f \$assembly)"
 
     """
 

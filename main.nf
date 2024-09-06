@@ -21,8 +21,8 @@ nextflow.enable.dsl=2
 // Import workflow scripts
 
 include { HIFEVER } from './workflows/hi-fever.nf'
-include { BATCH } from './workflows/hi-fever-batch.nf'
 include { SINGLE } from './workflows/hi-fever-single.nf'
+include { SINGLEFAST} from './workflows/hi-fever-single-fast.nf'
 
 //  Workflow definition
 
@@ -31,11 +31,11 @@ workflow {
     HIFEVER ()
     }
 
-    else if ( "$params.entry" == "BATCH") {
-    BATCH ()
-    }
-
     else if ( "$params.entry" == "SINGLE") {
     SINGLE ()
+    }
+
+    else if ( "$params.entry" == "SINGLEFAST") {
+    SINGLEFAST ()
     }
 }
