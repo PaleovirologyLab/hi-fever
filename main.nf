@@ -32,6 +32,10 @@ workflow {
     HIFEVER ()
     }
 
+    if ( "$params.entry" == "FAST" ) {
+	HIFEVERFAST ()
+	}
+
     else if ( "$params.entry" == "SINGLE") {
     SINGLE ()
     }
@@ -40,18 +44,3 @@ workflow {
     SINGLEFAST ()
     }
 }
-
-	if ( "$params.entry" == "FAST" ) {
-	HIFEVERFAST ()
-	}
-
-	else if ( "$params.entry" == "SINGLE" ) {
-	SINGLE ()
-	}
-
-	else if ( "$params.entry" == "HIFEVER" ) {
-	HIFEVER ()
-	}
-	
-}
-
