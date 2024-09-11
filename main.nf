@@ -24,11 +24,11 @@ nextflow.enable.dsl=2
 include { HIFEVER } from './workflows/hi-fever.nf'
 include { HIFEVERFAST } from './workflows/hi-fever-fast.nf'
 include { SINGLE } from './workflows/hi-fever-single.nf'
-include { SINGLEFAST} from './workflows/hi-fever-single-fast.nf'
+include { SINGLEFAST } from './workflows/hi-fever-single-fast.nf'
 
 //  Workflow definition
 workflow {
-    
+
     if ( "$params.entry" == "LOCAL" ) {
     HIFEVER ()
     }

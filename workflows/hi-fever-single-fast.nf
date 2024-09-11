@@ -64,7 +64,7 @@ workflow SINGLEFAST {
     assembly_stats(assembly_ch).collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
     // Run main EVE search, annotate potential domains, and extract FASTAs
-    diamond_out = diamond(fetched_assembly_files.combine(clustered_query_ch))
+    diamond_out = diamond(assembly_ch.combine(clustered_query_ch))
     intersect_domains_merge_extract(diamond_out.combine(query_hmm_profiles_ch))
     strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
     context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
