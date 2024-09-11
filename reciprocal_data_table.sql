@@ -60,7 +60,7 @@ COALESCE("class", 'N/A') AS "class", COALESCE("order", 'N/A') AS "order",
 COALESCE("family", 'N/A') AS "family", COALESCE(genus, 'N/A') AS genus,
 COALESCE(species, 'N/A') AS species
 FROM all_reciprocal_matches
-INNER JOIN domains
+LEFT JOIN domains
 ON all_reciprocal_matches.query_locus = domains.locus
 ORDER BY query_locus, "database", e_value;
 
