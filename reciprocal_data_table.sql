@@ -1,5 +1,6 @@
 --Wenyang Lyu, Jose Gabriel Nino Barreat
---Date: 12/Dec/2023
+--Last update: Jose Gabriel Nino Barreat
+--Date: 11/Sep/2024
 
 -- Set schema to use
 
@@ -51,9 +52,12 @@ SELECT query_locus, "database",
 subject_protein,
 --subject_title,
 REGEXP_REPLACE(COALESCE(SUBSTRING(subject_title FROM 'RecName: Full=(.+?);'),REGEXP_REPLACE(subject_title, '.*\:\s', '')), 'isoform.*$|,\spartial|^putative\s', '') AS subject_title_clean,
-domains_i_evalue_best, 
-domains_bitscore_best, model_names, model_descriptions, model_accs, percent_identity, "length", mismatches,
-gapopens, e_value, bitscore,
+COALESCE(domains_i_evalue_best, 'N/A') AS domains_i_evalue_best, 
+COALESCE(domains_bitscore_best, 'N/A') AS domains_bitscore_best, 
+COALESCE(model_names, 'N/A') AS model_names, 
+COALESCE(model_descriptions, 'N/A') AS model_descriptions, 
+COALESCE(model_accs, 'N/A') AS model_accs,
+percent_identity, "length", mismatches, gapopens, e_value, bitscore,
 COALESCE(subject_taxids, 'N/A') AS subject_taxids, COALESCE(superkingdom, 'N/A') AS superkingdom,
 COALESCE(kingdom, 'N/A') AS kingdom, COALESCE(phylum, 'N/A') AS phylum,
 COALESCE("class", 'N/A') AS "class", COALESCE("order", 'N/A') AS "order",
@@ -64,19 +68,4 @@ LEFT JOIN domains
 ON all_reciprocal_matches.query_locus = domains.locus
 ORDER BY query_locus, "database", e_value;
 
-SELECT * FROM potential_output
-WHERE "family" LIKE 'Filoviridae';
-
-DROP TABLE all_reciprocal_matches;
-DROP TABLE potential_output;
-DROP TABLE domains;
-
-SELECT * FROM all_reciprocal_matches;
-
-SELECT * FROM domains;
-
-SELECT * FROM best_forward_hits_phmm
-WHERE locus LIKE 'AAPY01115927%';
-
-SELECT * FROM best_forward_hits_phmm;
-SELECT * FROM reciprocal_nr;
+SELECT * FROM potential_output;
