@@ -14,6 +14,7 @@ conda activate hi-fever
 
 # Setting up run parameters
 export RUNNAME="batch1"
+export FORKS=4
 
 # Setting up the temporary storage and compute directory
 
@@ -28,8 +29,8 @@ nextflow main.nf \
 -with-report ${RUNNAME}.html \
 --workDir ${TMPDIR} \
 --outdir ${RUNNAME} \
---diamond_forks 4 \
---diamond_mode more-sensitive
+--diamond_forks ${FORKS} \
+--diamond_mode very-sensitive
 
 
 : '
