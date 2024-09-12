@@ -12,7 +12,25 @@ conda activate hi-fever
 
 # Run workflow
 
-nextflow main.nf
+# Setting up run parameters
+export RUNNAME="batch1"
+
+# Setting up the temporary storage and compute directory
+
+# Running the workflow
+nextflow main.nf \
+--entry HIFEVER \
+--query_file_aa query.fasta \
+--ftp_file ${RUNNAME}.txt \
+--phmms data/domains \
+--reciprocal_rvdb_db data/rvdbv28_clustered_wtaxa.dmnd \
+--reciprocal_nr_db data/nr_clustered_wtaxa.dmnd \
+-with-report ${RUNNAME}.html \
+--workDir ${TMPDIR} \
+--outdir ${RUNNAME} \
+--diamond_forks 4 \
+--diamond_mode more-sensitive
+
 
 : '
 N.B. You may want to copy input files and databases to
