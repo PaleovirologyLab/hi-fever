@@ -32,31 +32,14 @@ FROM reciprocal_nr
 LEFT JOIN taxonomy
 ON taxonomy.species_taxid = reciprocal_nr.subject_taxids;
 
---Create potential output table for downstream analyses, null values coded as N/A
-
-CREATE TABLE potential_output AS
-SELECT query_locus, "database",
-subject_protein,
-COALESCE(SUBSTRING(subject_title FROM 'RecName: Full=(.+?);'),REGEXP_REPLACE(subject_title, '.*\:\s', '')) AS subject_title_clean,
-percent_identity, "length", e_value, bitscore,
-COALESCE(subject_taxids, 'N/A') AS hit_taxids, COALESCE(superkingdom, 'N/A') AS hit_superkingdom,
-COALESCE(kingdom, 'N/A') AS hit_kingdom, COALESCE(phylum, 'N/A') AS hit_phylum,
-COALESCE("class", 'N/A') AS "class", COALESCE("order", 'N/A') AS "order",
-COALESCE("family", 'N/A') AS "family", COALESCE(genus, 'N/A') AS hit_genus,
-COALESCE(species, 'N/A') AS hit_species
-FROM all_reciprocal_matches
-LEFT JOIN 
-ON all_reciprocal_matches.query_locus
-ORDER BY query_locus, "database", e_value;
-
 --Create the large merged table
 
 CREATE TABLE merged AS (
 SELECT
     all_reciprocal_matches.query_locus as EVE_locus,
-    all_reciprocal_matches.percent_identity as BLAST_identity,
-    all_reciprocal_matches.e_value as BLAST_evalue,
-    all_reciprocal_matches.bitscore as BLAST_bitscore,
+    all_reciprocal_matches.percent_identity as blast_identity,
+    all_reciprocal_matches.e_value as blast_evalue,
+    all_reciprocal_matches.bitscore as blast_bitscore,
     all_reciprocal_matches.subject_taxids as hit_taxid,
     all_reciprocal_matches.subject_title as hit_title,
     all_reciprocal_matches."database",
@@ -78,9 +61,8 @@ SELECT
     genewise.frameshifts_corrected,
     genewise.inframe_stops_removed,
     genewise.query as genewise_model,
+    genewise.peptide_seq as reconstructed_peptide,
     genewise.bitscore as genewise_bitscore,
-    predicted_ORFs.coverage_of_locus_by_orf,
-    predicted_ORFs.orf_seq,
     taxonomy."class" as host_class,
     taxonomy."order" as host_order,
     taxonomy.family as host_family,
@@ -93,12 +75,22 @@ FROM
     ON assembly_metadata.assembly_id = locus_to_assembly_junction_table.assembly_id
     JOIN genewise
     ON genewise.locus = all_reciprocal_matches.query_locus
-    JOIN predicted_ORFs
-    ON predicted_ORFs.locus = all_reciprocal_matches.query_locus
     JOIN taxonomy
     ON taxonomy.species_taxid = assembly_metadata.taxid
-)
+);
 
-ALTER TABLE merged ADD COLUMN orf_length INT;
+ALTER TABLE merged ADD COLUMN peptide_length INT;
+ALTER TABLE merged ADD COLUMN EVE_length INT;
+ALTER TABLE merged ADD COLUMN peptide_coverage INT;
 UPDATE merged
-	SET orf_length = CHAR_LENGTH(orf_seq);
+	SET peptide_length = CHAR_LENGTH(reconstructed_peptide),
+	EVE_length = CAST((SPLIT_PART(SPLIT_PART(EVE_locus, ':', 2), '-', 2)) as INT) - CAST((SPLIT_PART(SPLIT_PART(EVE_locus, ':', 2), '-', 1)) as INT),
+	peptide_coverage = CAST((peptide_length * 3) as REAL) / CAST(EVE_length as REAL) * 100;
+
+CREATE TABLE merged_best_hit_rvdb AS (
+	SELECT DISTINCT * FROM
+		(SELECT *,
+		  rank() OVER (PARTITION BY EVE_locus ORDER BY blast_bitscore DESC) ranked
+		  FROM (
+			SELECT * FROM merged WHERE "database" ILIKE 'rvdb'))
+		where ranked = 1)
