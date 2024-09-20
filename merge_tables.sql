@@ -1,9 +1,9 @@
 --Wenyang Lyu, Jose Gabriel Nino Barreat, Emma Harding
---Date: 12/Sep/2024
+--Date: 20/Sep/2024
 
 -- Set schema to use
 
-SET search_path TO postgres;
+SET search_path TO test_schema;
 
 --Add database names to reciprocal tables
 
@@ -85,7 +85,7 @@ ALTER TABLE merged ADD COLUMN peptide_coverage INT;
 UPDATE merged
 	SET peptide_length = CHAR_LENGTH(reconstructed_peptide),
 	EVE_length = CAST((SPLIT_PART(SPLIT_PART(EVE_locus, ':', 2), '-', 2)) as INT) - CAST((SPLIT_PART(SPLIT_PART(EVE_locus, ':', 2), '-', 1)) as INT),
-	peptide_coverage = CAST((peptide_length * 3) as REAL) / CAST(EVE_length as REAL) * 100;
+	peptide_coverage = CAST((peptide_length * 3) as REAL) / EVE_length * 100;
 
 CREATE TABLE merged_best_hit_rvdb AS (
 	SELECT DISTINCT * FROM
@@ -93,4 +93,12 @@ CREATE TABLE merged_best_hit_rvdb AS (
 		  rank() OVER (PARTITION BY EVE_locus ORDER BY blast_bitscore DESC) ranked
 		  FROM (
 			SELECT * FROM merged WHERE "database" ILIKE 'rvdb'))
-		where ranked = 1)
+		where ranked = 1) r1;
+		
+--DROP TABLE assembly_metadata;
+--DROP TABLE assembly_statistics;
+--DROP TABLE genewise;
+--DROP TABLE locus_to_assembly_junction_table;
+--DROP TABLE reciprocal_nr;
+--DROP TABLE reciprocal_rvdb;
+--DROP TABLE taxonomy;
