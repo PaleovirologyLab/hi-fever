@@ -34,8 +34,8 @@ workflow {
     }
 
     else if ( "$params.entry" == "FAST" ) {
-	HIFEVERFAST ()
-	}
+    HIFEVERFAST ()
+    }
 
     else if ( "$params.entry" == "SINGLE") {
     SINGLE ()
