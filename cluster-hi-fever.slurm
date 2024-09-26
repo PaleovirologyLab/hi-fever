@@ -16,8 +16,11 @@ conda activate hi-fever
 # Run workflow
 
 # Setting up run parameters
-export RUNNAME="run4"
+export RUNNAME="run1"
 export FORKS=4
+
+# Make run directory
+mkdir /data/zool-paleovirology/shared_resources/mining_results/${RUNNAME}
 
 # Setting up the temporary storage and compute directory
 
@@ -30,8 +33,8 @@ nextflow main.nf \
 --ftp_file /data/zool-paleovirology/shared_resources/genomes/${RUNNAME}.txt \
 --reciprocal_rvdb_db /data/zool-paleovirology/shared_resources/data/rvdbv28_clustered_wtaxa.dmnd \
 --reciprocal_nr_db /data/zool-paleovirology/shared_resources/data/nr_clustered_wtaxa.dmnd \
--with-report /data/zool-paleovirology/shared_resources/mining_results/${RUNNAME}.html \
+-with-report /data/zool-paleovirology/shared_resources/mining_results/${RUNNAME}/${RUNNAME}.html \
 -work-dir ${TMPDIR} \
---outdir /data/zool-paleovirology/shared_resources/mining_results/${RUNNAME}_results \
+--outdir /data/zool-paleovirology/shared_resources/mining_results/${RUNNAME}/${RUNNAME}_results \
 --diamond_forks ${FORKS} \
 --diamond_mode very-sensitive
