@@ -3,7 +3,10 @@
 #SBATCH --ntasks-per-node=48
 #SBATCH -t 48:00:00
 #SBATCH --mem=50G
+#SBATCH --job-name=hi-fever
 #SBATCH --partition=medium
+#SBATCH --output=/data/zool-paleovirology/shared_resources/submission_scripts/logs/slurm-%j.out
+#SBATCH --error=/data/zool-paleovirology/shared_resources/submission_scripts/logs/slurm-%j.err
 
 #cd to hi-fever directory
 cd /data/zool-paleovirology/shared_resources/hi-fever
@@ -16,7 +19,7 @@ conda activate hi-fever
 # Run workflow
 
 # Setting up run parameters
-export RUNNAME="run1"
+export RUNNAME="run15"
 export FORKS=4
 
 # Make run directory
