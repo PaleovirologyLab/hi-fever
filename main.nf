@@ -25,6 +25,7 @@ nextflow.enable.dsl=2
 include { HIFEVERFAST } from './workflows/hi-fever-fast.nf'
 //include { SINGLE } from './workflows/hi-fever-single.nf'
 //include { SINGLEFAST } from './workflows/hi-fever-single-fast.nf'
+//include { MULTIPLEFAST } from './workflows/hi-fever-multiple-fast.nf'
 
 //  Workflow definition
 workflow {
@@ -34,8 +35,8 @@ workflow {
     }
 
     else if ( "$params.entry" == "FAST" ) {
-    HIFEVERFAST ()
-    }
+	HIFEVERFAST ()
+	}
 
     else if ( "$params.entry" == "SINGLE") {
     SINGLE ()
@@ -44,4 +45,8 @@ workflow {
     else if ( "$params.entry" == "SINGLEFAST") {
     SINGLEFAST ()
     }
+
+    else if ( "$params.entry" == "MULTIPLEFAST") {
+    MULTIPLEFAST ()
+    }    
 }

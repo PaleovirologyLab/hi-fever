@@ -1,0 +1,44 @@
+FROM arm64v8/ubuntu:20.04
+LABEL maintainer="Jose Gabriel Nino Barreat <jose.ninobarreat@biology.ox.ac.uk>"
+
+# Set paths to the miniconda bin directory
+ENV PATH="/root/miniconda3/bin:${PATH}"
+ARG PATH="/root/miniconda3/bin:${PATH}"
+
+# Get updates before installing software
+RUN apt-get update
+
+# Install wget and remove /var/lib/apt/lists/* (ubuntu package lists, not needed)
+RUN apt-get -y install wget && rm -rf /var/lib/apt/lists/*
+
+# Download and install miniconda
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda.sh \
+    && mkdir /root/.conda \
+    && bash ~/miniconda.sh -b \
+    && rm -f ~/miniconda.sh
+
+# Copy environment.yml into image (must be in build context directory)
+COPY environment-arm64.yml .
+
+# Update conda and create the hi-fever environment
+RUN conda install conda=24.9.1 \
+    && conda env create -f environment-arm64.yml \
+    && conda clean --all --yes
+
+# Load environment inside image and set path variables
+RUN echo "source activate hi-fever" > ~/.bashrc
+ENV PATH=/root/miniconda3/envs/hi-fever/bin:$PATH
+ENV CONDA_PREFIX=/root/miniconda3/envs/hi-fever
+
+#Install diamond and blast
+RUN apt-get -y update && apt-get -y install build-essential
+RUN wget http://github.com/bbuchfink/diamond/archive/v2.1.9.tar.gz \
+    && tar xzf v2.1.9.tar.gz \
+    && cd diamond-2.1.9 \
+    && mkdir bin \
+    && cd bin \
+    && cmake .. \
+    && make -j4 \
+    && make install \
+    && cd
+RUN apt-get -y install ncbi-blast+
