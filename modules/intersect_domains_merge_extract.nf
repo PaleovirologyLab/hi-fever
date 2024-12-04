@@ -1,7 +1,7 @@
-process intersect_domains_merge_extract {
+process extract_seqs_annotate_matches {
 
     input:
-    tuple path(diamond_tsv), path(assembly_nsq_db), path(domain_annotation)
+    tuple path(diamond_tsv), path(assembly_nsq_db)
 
     output:
     path "strict_coords.bed", emit: strict_coords_ch
@@ -11,11 +11,6 @@ process intersect_domains_merge_extract {
     path "*_locus_assembly_map.tsv", emit: locus_assembly_map_ch
 
     """
-
-    # Wait for domain annotation file
-
-    domain_annotation=$domain_annotation
-
     # Prepare variables
 
     dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
@@ -29,22 +24,23 @@ process intersect_domains_merge_extract {
     # Sorts best bitscore alignment per cluster to the top and removes others
     # Intersects this with the maximal range temp file
     # Converts to a subject oriented bed (i.e., protein hit and coordinates).
-    # Intersects with domain coordinate annotation file, reports:
 
+    # Reports:
     # sseqid_(protein) sstart send locus_id qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen
     # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue
     # model_acc model_name model_description
 
-    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; \
+    else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
     sort -k1,1 -k2,2n | \
     tee >(bedtools merge > strict_coords.bed) | \
     bedtools cluster | \
     sort -k16,16n -k11,11nr | \
     sort -u -k16,16n | \
     bedtools intersect -a - -b strict_coords.bed -loj -sorted | \
-    awk 'BEGIN{OFS="\t"}; {print \$6, \$7, \$8, \$17":"\$18"-"\$19, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
+    awk 'BEGIN{OFS="\t"}; \
+    {print \$6, \$7, \$8, \$17":"\$18"-"\$19, \$17, \$18, \$19, \$2, \$3, \$4, \$5, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' | \
     sort -k1,1 -k2,2n | \
-    bedtools intersect -a - -b \$domain_annotation -loj -sorted | \
     cut -f19 --complement > \
     \${assemblyID}_matches.dmnd.annot.tsv
 

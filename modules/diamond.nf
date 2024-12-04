@@ -25,18 +25,38 @@ process diamond {
     -q \$chunks \
     -o matches.out \
     -p \$cpu_count \
-    --max-target-seqs 1000 \
+    --max-target-seqs $params.diamond_max_target_seqs \
     --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen &
 
     gunzip -c \$assembly | makeblastdb -in - -out \${assembly/*\\//} -title \${assembly/*\\//} -dbtype nucl -parse_seqids &
 
     wait
 
-    sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' > matches.reformatted.dmnd.tsv
+    sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | \
+    awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' \
+    > matches.reformatted.dmnd.tsv
 
     rm \$chunks
 
     rm "\$(readlink -f \$assembly)"
+
+    """
+
+}
+
+process build_diamond_db {
+    input:
+    val label // label for output
+    path sequences //input file
+
+    output:
+    //path "DB_clu_rep.fasta", emit: clust_ch
+    path "${label}_db.dmnd", emit: vir_db_ch
+    publishDir "${params.outdir}/${label}_db", mode: "copy"
+
+    """
+
+    diamond makedb --in $sequences -d ${label}_db
 
     """
 

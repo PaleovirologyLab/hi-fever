@@ -4,23 +4,23 @@ process reciprocal_diamond {
     path strict_fastas_collected
     path context_fastas_collected
     path reciprocal_nr_db
-    path reciprocal_rvdb_db
-    path annotated_hits_collected
-    path clustered_proteins
+    // path reciprocal_rvdb_db
+    // path annotated_hits_collected
+    // path clustered_proteins
 
     output:
     path "reciprocal-nr-matches.dmnd.tsv", emit: reciprocal_nr_matches_ch
-    path "reciprocal-rvdb-matches.dmnd.tsv", emit: reciprocal_rvdb_matches_ch
-    path "best_hits.fasta", emit: best_hits_fa_ch
+    // path "reciprocal-rvdb-matches.dmnd.tsv", emit: reciprocal_rvdb_matches_ch
+    // path "best_hits.fasta", emit: best_hits_fa_ch
     path "loci-merged-coordinates.fasta.gz", emit: merged_fa_ch
     path "loci-context-coordinates.fasta.gz", emit: context_fa_ch
     path "all_context_coords.bed", emit: context_coords_ch
-    path "matches.dmnd.annot.tsv"
-    path "best_pairs.txt", emit: pairs_ch
-    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
-    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
-    publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
+    // path "matches.dmnd.annot.tsv"
+    // path "best_pairs.txt", emit: pairs_ch
+    // publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
+    // publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
+    // publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
+    // publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
 
     """
 
@@ -42,7 +42,7 @@ process reciprocal_diamond {
     --$params.diamond_mode \
     --matrix $params.diamond_matrix \
     --masking seg \
-    -d $reciprocal_nr_db \
+    -d $reciprocal_db \
     -q loci-merged-coordinates.fasta \
     -e 1e-5 \
     -k 10 \
@@ -51,26 +51,36 @@ process reciprocal_diamond {
     cut -f1-18 > \
     reciprocal-nr-matches.dmnd.tsv
 
-    # Run reciprocal RVDB search, extract best reciprocal hit pairs & their alignment length
-
-    diamond blastx \
-    --$params.diamond_mode \
-    --matrix $params.diamond_matrix \
-    --masking seg \
-    -d $reciprocal_rvdb_db \
-    -q loci-merged-coordinates.fasta \
-    -e 1e-5 \
-    -k 10 \
-    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
-    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal-rvdb"}' >> mixed_hits.txt) | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_rvdb_subset.fasta) | \
-    cut -f1-18 > \
-    reciprocal-rvdb-matches.dmnd.tsv
 
     # Zip up query file for outdir publication
 
     gzip loci-merged-coordinates.fasta
 
-    # Concatenate forward hit tables
+    """
+
+}
+
+
+process concatenate_results {
+
+    input:
+    path reciprocal_nr_matches_ch
+    path merged_fa_ch
+    path context_fa_ch
+    path context_coords_ch
+    path annotated_hits_collected
+    path clustered_proteins
+
+    output:
+    path "best_hits.fasta", emit: best_hits_fa_ch
+    path "matches.dmnd.annot.tsv"
+    path "best_pairs.txt", emit: pairs_ch
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
+    publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
+
+    """
 
     cat $annotated_hits_collected > matches.dmnd.annot.tsv
 
