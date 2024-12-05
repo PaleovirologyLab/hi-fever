@@ -131,16 +131,15 @@ process genewise {
     sort -k5,5 -k2,2n -k3,3nr | \
     sort -u -k5,5 > \
     wise_tmp/merged_results
-
-    # Post-processing of in-frame STOPs
-
-    stopConvertAndCount.py --task $params.stop_task --file wise_tmp/merged_results > wise_tmp/stops_processed
-
-    # Translation of coding sequences
-    # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
-
-    translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
-
     """
 
 }
+
+    // # Post-processing of in-frame STOPs
+
+    // stopConvertAndCount.py --task $params.stop_task --file wise_tmp/merged_results > wise_tmp/stops_processed
+
+    // # Translation of coding sequences
+    // # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
+
+    // translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
