@@ -36,3 +36,19 @@ process get_assembly_metadata {
     """
 
 }
+
+
+process get_assembly_metadata_from_accn {
+    
+    input:
+    path assembly_stats
+
+    output:
+    stdout
+
+    """
+    get_assemblies_metada.py $assembly_stats $params.email --outfile /dev/stdout
+    
+    """
+
+}
