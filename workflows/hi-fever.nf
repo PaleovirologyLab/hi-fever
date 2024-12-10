@@ -39,7 +39,7 @@ include { cluster_seqs } from '../modules/cluster_seqs.nf'
 // include { hmmer } from '../modules/hmmer.nf'
 include { parse_ftp } from '../modules/parse_ftp.nf'
 include { download_assemblies } from '../modules/download_assemblies.nf'
-// include { get_assembly_metadata } from '../modules/get_assembly_metadata.nf'
+include { get_assembly_metadata; get_assembly_metadata_from_accn} from '../modules/get_assembly_metadata.nf'
 include { assembly_stats } from '../modules/assembly_stats.nf'
 // DIAMOND processes
 include { build_diamond_db as build_query} from '../modules/diamond.nf'
@@ -58,7 +58,7 @@ include { publish } from '../modules/publish.nf'
 
 // Run local workflow
 
-workflow {
+workflow HIFEVER {
 
     // Define channels
     def query_ch = Channel.fromPath(params.query_file_aa, checkIfExists: true)
@@ -80,8 +80,8 @@ workflow {
     // println(vir_db_ch.view())
     
     // // Unpack user supplied ftp list and begin downloading assemblies
-    // fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
-    fetched_assembly_files = Channel.fromPath("/home/biology/biol0273/Projects/hi-fever/test_data/GCF_035594765.1_rAnoCar3.1.pri_genomic.fna.gz")
+    fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
+    // fetched_assembly_files = Channel.fromPath("/home/biology/biol0273/Projects/hi-fever/test_data/GCF_035594765.1_rAnoCar3.1.pri_genomic.fna.gz")
     println(fetched_assembly_files.view())
     
     // // // Get assembly metadata
@@ -89,18 +89,27 @@ workflow {
     // //     get_assembly_metadata()
 
     // // Get stats about downloaded assembly files
-    // // assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', 
-    // //                                                     newLine: false, 
-    // //                                                     storeDir: "${params.outdir}/sql")
+    assembly_stats = assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', 
+                                                        newLine: false, 
+                                                        storeDir: "${params.outdir}/sql")
+
+    get_assembly_metadata_from_accn(assembly_stats).collectFile(name: 'assembly_metadata.tsv', 
+                                                        newLine: false, 
+                                                        storeDir: "${params.outdir}/sql")
+
     
-    // // Run a DIAMOND using chunks of the genome as query against viral sequences as the database
+    // Run a DIAMOND using chunks of the genome as query against viral sequences as the database
     diamond_out = diamond(fetched_assembly_files.combine(vir_db_ch))
     
     // Extract nucleotide locus, and flanking regions
     extract_seqs_annotate_matches(diamond_out)
+
+    // Inputs for reciprocal DIAMOND:
     forward_matches_collected = extract_seqs_annotate_matches.out.forward_matches.collect()
     strict_fastas_collected = extract_seqs_annotate_matches.out.strict_fa_ch.collect()
     context_fastas_collected = extract_seqs_annotate_matches.out.context_fa_ch.collect()
+    
+    // Files to publish:
     locus_assembly_map_collected = extract_seqs_annotate_matches.out.locus_assembly_map_ch.collect()
     strict_coords_ch = extract_seqs_annotate_matches.out.strict_coords_ch.collect()
 
@@ -139,8 +148,7 @@ workflow {
         reciprocal_matches = reciprocal_diamond_single.out.reciprocal_matches.collect()
         reciprocal_seqs = reciprocal_diamond_single.out.reciprocal_seqs.collect()
         reciprocal_hits = reciprocal_diamond_single.out.reciprocal_hits.collect()
-        loci_merged_fa_gz = reciprocal_diamond_single.out.loci_merged_fa_gz.collect()
-
+        // loci_merged_fa_gz = reciprocal_diamond_single.out.loci_merged_fa_gz.collect()
         find_best_hits(forward_matches_collected, 
                         query_representatives, reciprocal_matches, 
                         reciprocal_seqs, reciprocal_hits)
@@ -153,13 +161,13 @@ workflow {
     // Frameshift and STOP aware reconstruction of EVE sequences
     genewise(pair_subsets,
             best_hit_proteins_val,
-            loci_merged_fa_gz,
+            loci_merged_fa,
             loci_merged_context_gz,
             all_context_coords_bed).collectFile(name: 'genewise.tsv', 
                                             newLine: false, 
                                             storeDir: "${params.outdir}/sql")
 
-    // // Produce taxonomy table for reciprocal searches and host assemblies
+    // Produce taxonomy table for reciprocal searches and host assemblies
     // build_taxonomy_table(ftp_ch,
     //         get_assembly_metadata.out.assembly_metadata_ch,
     //         reciprocal_diamond.out.reciprocal_nr_matches_ch,
