@@ -1,4 +1,4 @@
-process get_assembly_metadata {
+process get_assembly_metadata_all {
 
     output:
     path "assembly_metadata.tsv", emit: assembly_metadata_ch
@@ -38,7 +38,7 @@ process get_assembly_metadata {
 }
 
 
-process get_assembly_metadata_from_accn {
+process get_metadata {
     
     input:
     path assembly_stats
