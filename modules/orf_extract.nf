@@ -18,13 +18,13 @@ process orf_extract {
 
         then
 
-            title=\$(readlink -f $context_fasta | sed 's/.*\\///; s/_genomic.fna_context.fasta//')
+            title=\$(readlink -f $context_fasta | sed "s/.*\\///; s/_genomic.fna_context.fasta//")
 
             cat $context_fasta | \
             sed 's/:/-/' | \
             getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
             seqtk seq - | \
-            sed -r 's/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g' | \
+            sed -r "s/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g" | \
             tr -s ' ' '\t' | \
             paste -sd '\t\n' | \
             awk 'BEGIN{OFS="\t"}; {if (\$4 < \$5) print \$1, \$2+\$4-1, \$2+\$5-1, "+", \$6; else print \$1, \$2+\$5-1, \$2+\$4-1, "-", \$6}' | \

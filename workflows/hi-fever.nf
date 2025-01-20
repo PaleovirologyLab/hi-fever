@@ -100,16 +100,18 @@ workflow HIFEVER {
     forward_diamond_out = forward_diamond(fetched_assembly_files.combine(vir_db_ch))
     
     // Extract genome locus with hits, and their flanking regions
-    extract_seqs_annotate_matches(forward_diamond_out)
+    extract_seqs_outputs = extract_seqs_annotate_matches(forward_diamond_out)
+
+    orfs_collected = orf_extract(extract_seqs_outputs.context_fa_ch, 
+                                 extract_seqs_outputs.strict_coords_ch)
 
     // Inputs for reciprocal DIAMOND:
-    forward_matches = extract_seqs_annotate_matches.out.forward_matches.collect()
-    strict_fastas_collected = extract_seqs_annotate_matches.out.strict_fa_ch.collect()
-    context_fastas_collected = extract_seqs_annotate_matches.out.context_fa_ch.collect()
+    forward_matches = extract_seqs_outputs.forward_matches.collect()
+    strict_fastas_collected = extract_seqs_outputs.strict_fa_ch.collect()
+    context_fastas_collected = extract_seqs_outputs.context_fa_ch.collect()
     
     // Files to publish
-    locus_assembly_map_collected = extract_seqs_annotate_matches.out.locus_assembly_map_ch.collect()
-    strict_coords_ch = extract_seqs_annotate_matches.out.strict_coords_ch.collect()
+    locus_assembly_map_collected = extract_seqs_outputs.locus_assembly_map_ch.collect()
 
     // Concatenate sequences into single file
     merge_seqs_loci(strict_fastas_collected, context_fastas_collected)
@@ -178,7 +180,9 @@ workflow HIFEVER {
     // orfs_collected = orf_extract(extract_seqs_annotate_matches.out.context_fa_ch, \
     //             extract_seqs_annotate_matches.out.strict_coords_ch).collect()
 
-    orfs_collected = orf_extract(loci_merged_fa, loci_merged_context_gz).collect()
+
+    // Create predicted_ORFS by looking at which 
+    
 
 
     // Produce taxonomy table for reciprocal searches and host assemblies
