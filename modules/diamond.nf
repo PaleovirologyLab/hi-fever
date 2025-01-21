@@ -23,7 +23,7 @@ process forward_diamond {
 
     output:
     tuple path("*.dmnd.tsv"), path("*.gz*nsq")
-    // publishDir "${params.outdir}", mode: "copy", pattern: "*.dmnd.tsv"
+    publishDir "${params.outdir}", mode: "copy", pattern: "*.dmnd.tsv"
     // publishDir "${params.outdir}", mode: "copy", pattern: "*.gz*nsq"
 
     """
@@ -52,7 +52,7 @@ process forward_diamond {
 
     sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | \
     awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' \
-    > forward_matches.annot.dmnd.tsv
+    > "\${assembly}_forward-matches-raw.dmnd.tsv"
 
     # rm \$chunks
 
