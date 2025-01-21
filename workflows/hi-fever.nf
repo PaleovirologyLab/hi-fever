@@ -1,35 +1,3 @@
-// Workflow specific parameters
-
-// // Check for outdir & input files
-
-// if (file("$params.outdir").exists()) {
-//     error("Folder '$params.outdir' already exists. Remove or rename it before rerunning, or use --outdir to direct workflow outputs to an alternative directory.")
-// }
-
-// if (!file("$params.query_file_aa").exists()) {
-//     error("Input file '$params.query_file_aa' was not found. Either add it to the data directory, or specify another query file using --query_file_aa")
-// }
-
-// if (!file("$params.ftp_file").exists()) {
-//     error("Input file '$params.ftp_file' was not found. Either add it to the data directory, or specify another assembly list using --ftp_file")
-// }
-
-// if (!file("$params.reciprocal_nr_db").exists()) {
-//     error("Input file '$params.reciprocal_nr_db' was not found. Either add it to the data directory, or specify another reciprocal nr database using --reciprocal_nr_db")
-// }
-
-// if (!file("$params.reciprocal_rvdb_db").exists()) {
-//     error("Input file '$params.reciprocal_rvdb_db' was not found. Either add it to the data directory, or specify another reciprocal RVDB database using --reciprocal_rvdb_db")
-// }
-
-// if (!file("$params.phmms").exists()) {
-//     error("Input file '$params.phmms' was not found. Either add it to the data directory, or specify another phmm database using --phmms")
-// }
-
-// if (!params.max_target_seqs) {
-//     param.max_target_seqs = 1000
-// }
-
 // Import modules
 
 //include { build_db } from '../modules/build_db.nf'
@@ -168,6 +136,17 @@ workflow HIFEVER {
                                             newLine: false, 
                                             storeDir: "${params.outdir}/sql")
 
+    // Produce taxonomy table for reciprocal searches and host assemblies
+    // build_taxonomy_table(ftp_ch,
+    //         get_assembly_metadata.out.assembly_metadata_ch,
+    //         reciprocal_diamond.out.reciprocal_nr_matches_ch,
+    //         reciprocal_diamond.out.reciprocal_rvdb_matches_ch)
+
+    // // Produce final outputs
+    // publish(locus_assembly_map_collected, \
+    //         orfs_collected)
+
+    
     // TO DO: Add a step to annotate output with hmmer if user specied hmmer
     // // HMMER run on queries
     // if params.phmms:
@@ -185,14 +164,5 @@ workflow HIFEVER {
     
 
 
-    // Produce taxonomy table for reciprocal searches and host assemblies
-    // build_taxonomy_table(ftp_ch,
-    //         get_assembly_metadata.out.assembly_metadata_ch,
-    //         reciprocal_diamond.out.reciprocal_nr_matches_ch,
-    //         reciprocal_diamond.out.reciprocal_rvdb_matches_ch)
-
-    // // Produce final outputs
-    // publish(locus_assembly_map_collected, \
-    //         orfs_collected)
 
 }
