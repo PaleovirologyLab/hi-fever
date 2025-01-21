@@ -6,6 +6,7 @@ process orf_extract {
 
     output:
     path "*_intersected_ORFs.txt", optional: true
+    publishDir "${params.outdir}", mode: "copy", pattern: "*intersected_ORFs.txt"
 
     """
 
