@@ -72,3 +72,35 @@ process build_taxonomy_table {
     """
 
 }
+ 
+process build_diamond_taxonomy_table {
+
+    input: 
+    path forward_matches
+    path reciprocal_matches
+
+    output:
+    stdout
+
+    """
+    get_taxonomy_from_prot_accn.py $forward_matches $reciprocal_matches $params.email --outfile /dev/stdout
+    
+    """
+
+}
+
+
+process build_host_lineage_table {
+
+    input: 
+    path assembly_metadata
+
+    output:
+    stdout
+
+    """
+    get_taxonomy_from_prot_accn.py $assembly_metadata $params.email --outfile /dev/stdout
+    
+    """
+
+}
