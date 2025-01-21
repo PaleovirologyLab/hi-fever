@@ -116,5 +116,5 @@ if __name__ =="__main__":
     all_assemblies = get_assemblies_per_species(ids, args.batch, info, args.delay)
 
     with open(args.outfile, 'w', newline='') as output_file:
-        dict_writer = DictWriter(output_file, info, delimiter=',')
+        dict_writer = DictWriter(output_file, info, delimiter='\t')
         dict_writer.writerows(all_assemblies)
