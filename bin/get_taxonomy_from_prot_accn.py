@@ -22,10 +22,8 @@ def get_record_taxonomy(record):
 
 if __name__ =="__main__":
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('forward_diamond', type=argparse.FileType('r'),
-                        help='table with accession numbers: *forward_matches.dmnd.annot.tsv')
-    parser.add_argument('reciprocal_diamond', type=argparse.FileType('r'),
-                        help='table with accession numbers: *reciprocal*.tsv')
+    parser.add_argument('diamond_hits', type=argparse.FileType('r'),
+                        help='table with concatenated hits from forward and reciprocal diamonds: mixed_hits.txt')
     parser.add_argument('email', help='email for Entrez API transactions', type=str)
     parser.add_argument("--batch", type=int, default=50,
                         help="Batch size for retrieving records")
@@ -35,33 +33,14 @@ if __name__ =="__main__":
                         help="Name of the output file")
     args = parser.parse_args()
 
-    # Read forward tables
-    forward_hits_files = glob(args.forward_diamond)
-    forw = []
-    for file in forward_hits_files:
-        df = pd.read_csv(file, sep="\t", usecols=[0,1,2,3,4])
-        df.columns = ["hit_accn", "len", "size", "locus", "query_accn"]
-        print(df.shape)
-        forw.append(df)
+    # Read diamond hits
 
-    all_forward = pd.concat(forw, axis=0)
-
-    # Read reciprocal tables
-    reciprocal_hits_files = glob(args.reciprocal_diamond)
-    recip = []
-    for file in reciprocal_hits_files:
-        df = pd.read_csv(file, sep="\t", usecols=[0,1])
-        df.columns = ["locus", "hit_accn"]
-        print(df.shape)
-        recip.append(df)
-
-    all_reciprocal = pd.concat(recip, axis=0)
-
-    # Get unique accesion numbers
-    all_accns = pd.merge(all_reciprocal["hit_accn"], all_reciprocal["hit_accn"], )
-    unique_accn = all_accns["hit_accn"].unique()
+    all_hits = pd.read_csv(args.diamond_hits, sep="\t", usecols=[0,1], header=None)
+    all_hits.columns = ["hit_accn", "locus"]
+    unique_accn = all_hits["hit_accn"].unique()
     accns = unique_accn.tolist()
 
+    print(accns)
     # Get taxonomical information for unique accessions
     Entrez.email = "lmuoz@uwo.ca"
     accns_tax = {}
@@ -85,4 +64,4 @@ if __name__ =="__main__":
     df.reset_index(inplace=True)
 
     # Save to a CSV file
-    df.to_csv(args.outfile, index=False, header=False, sep="\t")
+    df.to_csv(args.outfile, index=False, sep="\t")

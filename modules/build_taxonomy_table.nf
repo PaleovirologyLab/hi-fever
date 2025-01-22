@@ -76,14 +76,14 @@ process build_taxonomy_table {
 process build_diamond_taxonomy_table {
 
     input: 
-    path forward_matches
-    path reciprocal_matches
+    path all_diamond_hits
 
     output:
-    stdout
+    path "diamond_taxonomy_table.tsv"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "diamond_taxonomy_table.tsv"
 
     """
-    get_taxonomy_from_prot_accn.py $forward_matches $reciprocal_matches $params.email --outfile /dev/stdout
+    get_taxonomy_from_prot_accn.py $all_diamond_hits $params.email --outfile "diamond_taxonomy_table.tsv"
     
     """
 
@@ -96,10 +96,11 @@ process build_host_lineage_table {
     path assembly_metadata
 
     output:
-    stdout
+    path "assemblies_lineage_information.tsv"
+    publishDir "${params.outdir}/sql", mode: "move", pattern: "assemblies_lineage_information.tsv"
 
     """
-    get_taxonomy_from_prot_accn.py $assembly_metadata $params.email --outfile /dev/stdout
+    get_lineage_from_assembly_id.py $assembly_metadata $params.email --outfile assemblies_lineage_information.tsv
     
     """
 

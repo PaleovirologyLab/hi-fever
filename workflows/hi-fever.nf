@@ -23,6 +23,8 @@ include { extract_seqs_annotate_matches } from '../modules/intersect_domains_mer
 include { orf_extract } from '../modules/orf_extract.nf'
 include { genewise } from '../modules/genewise.nf'
 include { build_taxonomy_table } from '../modules/build_taxonomy_table.nf'
+include { build_diamond_taxonomy_table } from '../modules/build_taxonomy_table.nf'
+include { build_host_lineage_table } from '../modules/build_taxonomy_table.nf'
 include { publish } from '../modules/publish.nf'
 
 // Run local workflow
@@ -53,9 +55,20 @@ workflow HIFEVER {
     // Get assembly metadata
     if (!params.dont_get_metada) {
         // For target genomes, requires email
-        get_metadata(assembly_stats).collectFile(name: 'assembly_metadata.tsv', 
-                                                 newLine: false, 
-                                                 storeDir: "${params.outdir}/sql")
+        metadata_channel = get_metadata(assembly_stats)
+        build_host_lineage_table(metadata_channel.assembly_metadata)
+        // .collectFile(
+        //                                          name: 'assemblies_lineage_information.tsv', 
+        //                                          newLine: false, 
+        //                                          storeDir: "${params.outdir}/sql")
+
+        // assembly_metadata = metadata.out.assembly_metadata.collect()
+        // build_host_lineage_table(assembly_metadata)
+
+        // assembly_metadata.collectFile(name: 'assembly_metadata.tsv', 
+        //                                          newLine: false, 
+        //                                          storeDir: "${params.outdir}/sql")
+        
 
     }  
     else if (params.get_all_metada) {
@@ -111,6 +124,7 @@ workflow HIFEVER {
                                                             file: true)
 
         best_hit_proteins_val = find_best_diamond_hits.out.best_hits_fa_ch.collect()
+        all_diamond_hits = find_best_diamond_hits.out.forward_plus_reciprocal_dmd_hits.collect()
     }
     else {
         // Reciprocal DIAMOND with rvdb and nr protein databases
@@ -124,6 +138,7 @@ workflow HIFEVER {
                                                             by: params.pairs_per_task, 
                                                             file: true)
         best_hit_proteins_val = reciprocal_diamond_full.out.best_hits_fa_ch.collect()
+        all_diamond_hits = reciprocal_diamond_full.out.mixed_hits.collect()
         
     }
     
@@ -136,33 +151,7 @@ workflow HIFEVER {
                                             newLine: false, 
                                             storeDir: "${params.outdir}/sql")
 
-    // Produce taxonomy table for reciprocal searches and host assemblies
-    // build_taxonomy_table(ftp_ch,
-    //         get_assembly_metadata.out.assembly_metadata_ch,
-    //         reciprocal_diamond.out.reciprocal_nr_matches_ch,
-    //         reciprocal_diamond.out.reciprocal_rvdb_matches_ch)
-
-    // // Produce final outputs
-    // publish(locus_assembly_map_collected, \
-    //         orfs_collected)
-
-    
-    // TO DO: Add a step to annotate output with hmmer if user specied hmmer
-    // // HMMER run on queries
-    // if params.phmms:
-    //     def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
-    //     hmmer(profiles_ch, query_proteins)
-    //     forward_matches = extract_seqs_annotate_matches.out.annot_tsv_ch.collect()
-
-
-    // Extract ORFs that overlap DIAMOND hits (extending into flanks)
-    // orfs_collected = orf_extract(extract_seqs_annotate_matches.out.context_fa_ch, \
-    //             extract_seqs_annotate_matches.out.strict_coords_ch).collect()
-
-
-    // Create predicted_ORFS by looking at which 
-    
-
-
+    // Make taxonomy table for proteins
+    build_diamond_taxonomy_table(all_diamond_hits)
 
 }

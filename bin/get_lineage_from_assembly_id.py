@@ -24,7 +24,7 @@ if __name__ =="__main__":
                         help="Batch size for retrieving records")
     parser.add_argument("--delay", type=float, default=1.0, 
                         help="Number of seconds to pause between queries (default 1).")
-    parser.add_argument("--outfile", type=str, default="assembly_lineates.tsv",
+    parser.add_argument("--outfile", type=str, default="assembly_lineages.tsv",
                         help="Name of the output file")
     args = parser.parse_args()
     

@@ -44,10 +44,11 @@ process get_metadata {
     path assembly_stats
 
     output:
-    stdout
+    path "assembly_metadata.tsv", emit: assembly_metadata
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "assembly_metadata.tsv"
 
     """
-    get_assemblies_metada.py $assembly_stats $params.email --outfile /dev/stdout
+    get_assemblies_metada.py $assembly_stats $params.email --outfile assembly_metadata.tsv
     
     """
 
