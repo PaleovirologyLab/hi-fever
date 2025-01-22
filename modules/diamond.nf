@@ -115,15 +115,18 @@ process find_best_diamond_hits {
     output:
     path "best_hits.fasta", emit: best_hits_fa_ch
     path "best_pairs.txt", emit: best_pairs_txt
+    path "mixed_hits.txt", emit: forward_plus_reciprocal_dmd_hits
     
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_hits.fasta"
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_pairs.txt"
+    publishDir "${params.outdir}", mode: "copy", pattern: "mixed_hits.txt"
+    publishDir "${params.outdir}", mode: "copy", pattern: "all_forward.dmnd.annot.tsv"    
 
     """
-    cat $forward_matches > forward_matches.dmnd.annot.tsv
+    cat $forward_matches > all_forward.dmnd.annot.tsv
 
     # Extract best forward hit pairs & their alignment length
-    awk 'BEGIN{OFS="\t"}; {print \$1,\$4,\$9-\$8, "forward"}' forward_matches.dmnd.annot.tsv | \
+    awk 'BEGIN{OFS="\t"}; {print \$1,\$4,\$9-\$8, "forward"}' all_forward.dmnd.annot.tsv | \
     uniq > \
     forward_hits.txt
     
