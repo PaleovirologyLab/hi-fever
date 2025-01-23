@@ -1,11 +1,10 @@
-// Import modules
-
-//include { build_db } from '../modules/build_db.nf'
-
-// INPUTS processes
-include { cluster_seqs } from '../modules/cluster_seqs.nf'
-// include { hmmer } from '../modules/hmmer.nf'
+// Parse inputs
 include { parse_ftp } from '../modules/parse_ftp.nf'
+include { check_file_type as check_query_type } from '../modules/parse_ftp.nf'
+include { check_file_type as check_reciprocal_type} from '../modules/parse_ftp.nf'
+include { cluster_seqs } from '../modules/cluster_seqs.nf'
+
+// Get inputs information
 include { download_assemblies } from '../modules/download_assemblies.nf'
 include { get_assembly_metadata_all; get_metadata} from '../modules/get_assembly_metadata.nf'
 include { assembly_stats } from '../modules/assembly_stats.nf'
@@ -43,12 +42,11 @@ workflow HIFEVER {
 
     // If params.cluster_query, cluster sequences
     query_proteins = (params.cluster_query ? cluster_seqs(query_ch) : query_ch) 
-    
-    // Build DIAMOND database
-    vir_db_ch = (params.build_query_db ? 
-                    build_query("query", query_proteins): 
-                        Channel.fromPath(params.query_diamond_db, checkIfExists: true))
-    
+
+    // Build DIAMOND database with queries if fasta file
+    query_type = query_ch | check_query_type
+    vir_db_ch = (query_type == 'fasta' ? 
+                    build_query("query", query_proteins): query_proteins)
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
@@ -70,7 +68,7 @@ workflow HIFEVER {
         get_assembly_metadata_all()
 
     }
-    
+
     // Run a DIAMOND using chunks of the genome as query against and viral sequences as database
     forward_diamond_out = forward_diamond(fetched_assembly_files.combine(vir_db_ch))
     
@@ -91,10 +89,12 @@ workflow HIFEVER {
     // Run reciprocal DIAMOND
     if (!params.full_reciprocal) {
         
-        // build reciprocal if provided by user, else, use default provided by us
-        reciprocal_db = (!params.dont_build_reciprocal ? 
-                            build_reciprocal("reciprocal", Channel.fromPath(params.reciprocal_db)):
-                            Channel.fromPath(params.reciprocal_db, checkIfExists: true))
+        def reciprocal_ch = Channel.fromPath(params.reciprocal_db, checkIfExists: true)
+        reciprocal_type = reciprocal_ch | check_reciprocal_type
+
+        // Create reciprocal database if input is in fasta, else use reciprocal_db
+        reciprocal_db = (reciprocal_type == 'fasta' ? 
+                            build_reciprocal("query", reciprocal_ch): reciprocal_ch)
         
         // run reciprocal DIAMOND and publish results
         reciprocal_diamond(reciprocal_db, loci_merged_fa)    
