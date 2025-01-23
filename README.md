@@ -246,21 +246,22 @@ HI-FEVER outputs several files in 2 results folders: accessory_fastas and SQL. A
 #### Accessory fastas folder
 
 This folder contains the sequence data of candidate EVEs.
- - loci-context-coordinates.fasta.gz
- - loci-merged-coordinates.fasta.gz
+ - `loci-context-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs including the genomic context (flanking regions etc.).
+ - `loci-merged-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs.
+These files are not recommended for direct analysis without further filtering. They contain the results for every candidate EVE, many of which are likely to be cross-matches to host proteins. We recommend to use the annotation results in the SQL folder to identify EVEs of interest and extract them from these fasta files before further analysis.
 
 #### SQL folder
 This folder contains tables and metadata relating to the candidate EVEs.
- - assembly_metadata.tsv - information about the genome assemblies provided in the ftp file including taxonomy, submitter, assembly level etc.
- - assembly_stats.tsv - statistics about the genome assemblies provided in the ftp file including size and coverage
- - genewise.tsv - predicted reconstructed sequences of each EVE candidate
- - locus_assembly_map.tsv - file mapping the genomic locus ID to the assembly from which it came
- - matches.dmnd.annot.tsv - results of the initial forward DIAMOND search of query proteins against genome assemblies
- - predicted_ORFs.tsv - predicted ORFs within the region of each candidate EVE
- - reciprocal-*-matches.dmnd.tsv - results of the reciprocal DIAMOND searches of candidate EVEs against reciprocal databases. There will be one result file for each reciprocal database search.
- - taxonomy_table.tsv - taxonomy data for every genome assembly and reciprocal hit from the HI-FEVER run
+ - `assembly_metadata.tsv` information about the genome assemblies provided in the ftp file including taxonomy, submitter, assembly level etc.
+ - `assembly_stats.tsv` statistics about the genome assemblies provided in the ftp file including size and coverage
+ - `genewise.tsv` predicted reconstructed sequences of each EVE candidate
+ - `locus_assembly_map.tsv` file mapping the genomic locus ID to the assembly from which it came
+ - `matches.dmnd.annot.tsv` results of the initial forward DIAMOND search of query proteins against genome assemblies
+ - `predicted_ORFs.tsv` predicted ORFs within the region of each candidate EVE
+ - `reciprocal-*-matches.dmnd.tsv` results of the reciprocal DIAMOND searches of candidate EVEs against reciprocal databases. There will be one result file for each reciprocal database search.
+ - `taxonomy_table.tsv` taxonomy data for every genome assembly and reciprocal hit from the HI-FEVER run
 
-For a quick interpretation of the results, we recommend focussing on the reciprocal-*-matches.dmnd.tsv files for full EVE annotations. Examples of how to differentiate between EVEs and false positives is described in our publication X.
+For a quick interpretation of the results, we recommend focussing on the `reciprocal-*-matches.dmnd.tsv` files for full EVE annotations. Examples of how to differentiate between EVEs and false positives is described in our publication X.
 
 We recommend parsing these tables into an SQL database for quick querying of the results. We have provided two SQL schema scripts to automatically import and process these files into searchable tables.
 
@@ -275,8 +276,8 @@ Steps to run:
 
 Alternatively, if you do not want to use SQL the files can be parsed in many other ways including:
  - grep searches of the reciprocal-*-matches.dmnd.tsv files to identify EVEs matching viral families of interest
-''' grep Bornaviridae reciprocal-nr-matches.dmnd.tsv'''
+``` grep Bornaviridae reciprocal-nr-matches.dmnd.tsv```
 
 - importing the tables in R
 
-- opening the files in Excel or a similar spreadsheet manager (not recommended for large searches)
+- opening the files in Excel or a similar spreadsheet manager (not recommended for large output files) and filtering using inbuilt functions
