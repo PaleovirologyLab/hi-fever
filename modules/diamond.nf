@@ -23,7 +23,8 @@ process forward_diamond {
 
     output:
     tuple path("*.dmnd.tsv"), path("*.gz*nsq")
-    publishDir "${params.outdir}", mode: "copy", pattern: "*.dmnd.tsv"
+    
+    // publishDir "${params.outdir}", mode: "copy", pattern: "*.dmnd.tsv"
     // publishDir "${params.outdir}", mode: "copy", pattern: "*.gz*nsq"
 
     """
@@ -73,9 +74,9 @@ process reciprocal_diamond {
     path "reciprocal_hits.txt", emit: reciprocal_hits
     path "reciprocal_seqs.fasta", emit: reciprocal_seqs
 
-    publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
-    publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_hits.txt"
-    publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_seqs.fasta"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
+    // publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_hits.txt"
+    // publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_seqs.fasta"
     
 
     """ 
@@ -119,8 +120,8 @@ process find_best_diamond_hits {
     
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_hits.fasta"
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_pairs.txt"
-    publishDir "${params.outdir}", mode: "copy", pattern: "mixed_hits.txt"
-    publishDir "${params.outdir}", mode: "copy", pattern: "all_forward.dmnd.annot.tsv"    
+    // publishDir "${params.outdir}", mode: "copy", pattern: "mixed_hits.txt"
+    // publishDir "${params.outdir}/sql", mode: "copy", pattern: "all_forward.dmnd.annot.tsv"
 
     """
     cat $forward_matches > all_forward.dmnd.annot.tsv
@@ -176,6 +177,7 @@ process reciprocal_diamond_full {
     path "reciprocal-rvdb-matches.dmnd.tsv", emit: reciprocal_rvdb_matches_ch
     path "best_hits.fasta", emit: best_hits_fa_ch
     path "best_pairs.txt", emit: best_pairs_txt
+    path "mixed_hits.txt", emit: mixed_hits
  
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"

@@ -80,7 +80,7 @@ process build_diamond_taxonomy_table {
 
     output:
     path "diamond_taxonomy_table.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "diamond_taxonomy_table.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "diamond_taxonomy_table.tsv"
 
     """
     get_taxonomy_from_prot_accn.py $all_diamond_hits $params.email --outfile "diamond_taxonomy_table.tsv"
@@ -97,7 +97,7 @@ process build_host_lineage_table {
 
     output:
     path "assemblies_lineage_information.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "assemblies_lineage_information.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "assemblies_lineage_information.tsv"
 
     """
     get_lineage_from_assembly_id.py $assembly_metadata $params.email --outfile assemblies_lineage_information.tsv

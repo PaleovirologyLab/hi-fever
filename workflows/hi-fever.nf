@@ -22,10 +22,16 @@ include { merge_seqs_loci} from '../modules/post_processing_files.nf'
 include { extract_seqs_annotate_matches } from '../modules/intersect_domains_merge_extract.nf'
 include { orf_extract } from '../modules/orf_extract.nf'
 include { genewise } from '../modules/genewise.nf'
+
+// Process file for outputs and publishing
 include { build_taxonomy_table } from '../modules/build_taxonomy_table.nf'
 include { build_diamond_taxonomy_table } from '../modules/build_taxonomy_table.nf'
 include { build_host_lineage_table } from '../modules/build_taxonomy_table.nf'
-include { publish } from '../modules/publish.nf'
+
+// Publish concatenated tables with results of all hosts
+include { concatenate_publish_tables as pulish_predicted_orfs} from '../modules/post_processing_files.nf'
+include { concatenate_publish_tables as pulish_forward_diamond} from '../modules/post_processing_files.nf'
+include { concatenate_publish_tables as pulish_assembly_map} from '../modules/post_processing_files.nf'
 
 // Run local workflow
 
@@ -56,19 +62,7 @@ workflow HIFEVER {
     if (!params.dont_get_metada) {
         // For target genomes, requires email
         metadata_channel = get_metadata(assembly_stats)
-        build_host_lineage_table(metadata_channel.assembly_metadata)
-        // .collectFile(
-        //                                          name: 'assemblies_lineage_information.tsv', 
-        //                                          newLine: false, 
-        //                                          storeDir: "${params.outdir}/sql")
-
-        // assembly_metadata = metadata.out.assembly_metadata.collect()
-        // build_host_lineage_table(assembly_metadata)
-
-        // assembly_metadata.collectFile(name: 'assembly_metadata.tsv', 
-        //                                          newLine: false, 
-        //                                          storeDir: "${params.outdir}/sql")
-        
+        build_host_lineage_table(metadata_channel.assembly_metadata)        
 
     }  
     else if (params.get_all_metada) {
@@ -83,17 +77,11 @@ workflow HIFEVER {
     // Extract genome locus with hits, and their flanking regions
     extract_seqs_outputs = extract_seqs_annotate_matches(forward_diamond_out)
 
-    orfs_collected = orf_extract(extract_seqs_outputs.context_fa_ch, 
-                                 extract_seqs_outputs.strict_coords_ch)
-
     // Inputs for reciprocal DIAMOND:
     forward_matches = extract_seqs_outputs.forward_matches.collect()
     strict_fastas_collected = extract_seqs_outputs.strict_fa_ch.collect()
     context_fastas_collected = extract_seqs_outputs.context_fa_ch.collect()
     
-    // Files to publish
-    locus_assembly_map_collected = extract_seqs_outputs.locus_assembly_map_ch.collect()
-
     // Concatenate sequences into single file
     merge_seqs_loci(strict_fastas_collected, context_fastas_collected)
     loci_merged_fa = merge_seqs_loci.out.loci_merged_fa.collect()
@@ -108,7 +96,7 @@ workflow HIFEVER {
                             build_reciprocal("reciprocal", Channel.fromPath(params.reciprocal_db)):
                             Channel.fromPath(params.reciprocal_db, checkIfExists: true))
         
-        // run reciprocal DIAMOND
+        // run reciprocal DIAMOND and publish results
         reciprocal_diamond(reciprocal_db, loci_merged_fa)    
         reciprocal_matches = reciprocal_diamond.out.reciprocal_matches.collect()
         reciprocal_seqs = reciprocal_diamond.out.reciprocal_seqs.collect()
@@ -151,7 +139,15 @@ workflow HIFEVER {
                                             newLine: false, 
                                             storeDir: "${params.outdir}/sql")
 
-    // Make taxonomy table for proteins
+    // Make taxonomy and publish table for proteins
     build_diamond_taxonomy_table(all_diamond_hits)
+
+    // Publish files
+    cat_forward = pulish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
+    predicted_orfs = orf_extract(extract_seqs_outputs.context_fa_ch, 
+                                 extract_seqs_outputs.strict_coords_ch)
+    cat_orfs = pulish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
+    locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
+    cat_assembly_map = pulish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
 
 }

@@ -10,13 +10,8 @@ process merge_seqs_loci {
     path "loci-context-coordinates.fasta.gz", emit: loci_merged_context_gz
     path "all_context_coords.bed", emit: all_context_coords_bed
 
-    publishDir "${params.outdir}", mode: "copy", pattern: "loci-merged-coordinates.fasta"
-    publishDir "${params.outdir}", mode: "copy", pattern: "all_context_coords.bed"
-
-    // publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-nr-matches.dmnd.tsv"
-    // publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-rvdb-matches.dmnd.tsv"
-    // publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "*.fasta.gz"
-    // publishDir "${params.outdir}/sql", mode: "move", pattern: "matches.dmnd.annot.tsv"
+    // publishDir "${params.outdir}", mode: "copy", pattern: "loci-merged-coordinates.fasta"
+    // publishDir "${params.outdir}", mode: "copy", pattern: "all_context_coords.bed"
 
     """
 
@@ -39,3 +34,39 @@ process merge_seqs_loci {
     """
 
 }
+
+process concatenate_publish_tables {
+    input:
+    path collected_files
+    val table_name  // Receive the table name as a string
+
+    output:
+    path "${table_name}"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "${table_name}"
+
+    """
+    cat $collected_files > '${table_name}'
+    """
+}
+
+// Old way of publishing predicted_orfs and locus_assembly_map
+// process publish {
+
+//     input:
+//     path locus_assembly_map_collected
+//     path orfs_collected
+
+//     output:
+//     path "locus_assembly_map.tsv"
+//     path "predicted_ORFs.tsv"
+//     publishDir "${params.outdir}/sql", mode: "move", pattern: "locus_assembly_map.tsv"
+//     publishDir "${params.outdir}/sql", mode: "move", pattern: "predicted_ORFs.tsv"
+
+//     """
+
+//     cat $locus_assembly_map_collected > locus_assembly_map.tsv
+//     cat $orfs_collected > predicted_ORFs.tsv
+
+//     """
+
+// }
