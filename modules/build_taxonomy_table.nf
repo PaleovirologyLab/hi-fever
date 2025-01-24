@@ -29,33 +29,9 @@ process build_taxonomy_table {
     cat reciprocal-taxids.txt assembly-taxids.txt | sort | uniq > all-taxids-uniq.txt
     awk '{if(\$0!~"N/A") print}' all-taxids-uniq.txt > all-taxids-uniq-nonas.txt
 
-    # Get the taxonomy files from NCBI, check for corruption, re-attempt if md5 check fails
-
-    max_attempts=5
-
-    count=0
-
-    md5check_function () {
-        wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz.md5
-        status=`md5sum -c taxdump.tar.gz.md5 2>/dev/null | sed 's/.* //'`
-        if [ "\$status" == FAILED ]
-        then
-            if [ "\$count" == "\$max_attempts" ]
-            then
-                echo "Taxonomy FAILED md5check \$max_attempts times, exiting"; exit 1
-            else
-                echo "Taxonomy FAILED md5check, restart function"; rm taxdump.tar.gz*; ((count=count+1)); md5check_function
-            fi
-        else
-                echo "Taxonomy PASSED md5check"
-        fi
-    }
-
-    md5check_function
-
     # Unpack taxonomy dump
 
-    tar -zxvf taxdump.tar.gz
+    tar -zxvf $params.taxonomy_table
 
     # Use taxonkit to obtain the lineage and print it in tabular format
     
