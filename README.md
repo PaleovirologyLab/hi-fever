@@ -89,16 +89,16 @@ nextflow hi-fever.nf -with-docker hi-fever
 ## Usage
 
 ### Inputs 
-- **Query proteins:** The viral proteins that you want to evaluate whether something similar exist in the host genomes. You can provide it as a `.fasta` file or diamond database (`.dmnd`) built from your query proteins. The workflow will automatically detect the type of file you provided
-- **Host genome(s):** To provide information about the genomes you would like to screen, provide a custom `ftp` file in plain text (example at `data/ftp_list.txt`)
+- **Query proteins:** The viral proteins that you want to search for in the host genomes. You can provide it as a `.fasta` file or diamond database (`.dmnd`) built from your query proteins. The workflow will automatically detect the type of file you provide.
+- **Host genome(s):** The genomes you would like to screen. Provide a custom `ftp` file in plain text (example at `data/ftp_list.txt`)
 - **E-mail (`--email`):** users need to provide an email in that is used to fetch the NCBI-database with `Efetch` in order to get taxonomical information about the protein hits and the host genomes.
-- **Proteins for reciprocal search:** `hi-fever` performs a second DIAMOND search to expand on the annotation of the hits resulting from the DIAMOND against the query proteins. A default at reciprocal database is provided at `data/minimal_reciprocal.dmnd`.
-- **Outoput directory `--outdir`:** Provide a name for folder where results will be stored. Default to `hi-fever/output`
+- **Proteins for reciprocal search:** `hi-fever` performs a second DIAMOND search to expand on the annotation of the EVE candidates. A default reciprocal database is provided at `data/minimal_reciprocal.dmnd`.
+- **Output directory `--outdir`:** Provide a name for folder where results will be stored. Default to `hi-fever/output`
 
 ### Outputs 
 HI-FEVER creates 2 folders in the `--outputdir`:
 
-**Sequences (`output/fastas` folder):**
+**Sequences (`fastas` folder):**
 
 
 - `loci-context-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs including the genomic context (flanking regions etc.).
@@ -106,7 +106,7 @@ HI-FEVER creates 2 folders in the `--outputdir`:
 
 > Note: Sequences in this folder are candidate EVEs. We recommend a further filtering step for these sequences since many EVE candidates are likely to be cross-matches to host proteins. You can use the annotation results in the SQL folder to identify the `locus-id` of interesting candidates. Use the `locus-ids` accession to retrieve target sequences for downstream analysis. 
 
-**Tables and metada (`output/sql` folder):**
+**Tables and metadata (`sql` folder):**
 
 - `assembly_metadata.tsv` information about the genome assemblies provided in the ftp file including taxonomy, submitter, assembly level etc.
 - `assembly_stats.tsv` statistics about the genome assemblies provided in the ftp file including size and coverage
@@ -140,9 +140,10 @@ HI-FEVER creates 2 folders in the `--outputdir`:
 ## Examples
 ### Input examples
 
-#### Query proteins
 HI-FEVER searches host genomes for matches against protein queries. As such, it requires a file providing the ftp list of genomes to be screened and a fasta file of protein queries. Examples of these files are below:
 
+#### Query proteins
+A FASTA file containing protein sequences (default 'protein_query.fasta') e.g:
 
 ```
 >ADI48253.1 putative Rep [Circoviridae TM-6c]
@@ -160,7 +161,7 @@ TRKAIDFIAHIDTDFQIYENPVYQLFCLQSFDPILAGTILYQWLSHRGGKKNTVSFIGPPGCGKSMLTGA
 ILENIPLHGILHGSLNTKNLRAYGQVLVLWWKDISINFDNFNIIKSLLGGQKIIFPINENDHVQIGPCPI
 IATSCVDIRSMVHSNLHKINLSQRVYNFTFDKVIPRNFPVIQKDDINQFLFWARNRSINCFIDYTVPKIL
 ```
->A FASTA file containing protein sequences (default 'protein_query.fasta') e.g:
+
 
 #### Host genomes
 The host genomes file (`assemblies.ftps`) should be a list of links to genome assemblies:
@@ -176,11 +177,11 @@ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ES
 
 #### Reciprocal database
 
-An escencial step in `hi-fever` is the reciprocal DIAMOND search. There are three options of input databases that you can use for this step based on your research question and your computational resources:
+An essential step in `hi-fever` is the reciprocal DIAMOND search. There are three options of input databases that you can use for this step based on your research question and your computational resources:
 
 1. **Minimal reciprocal database** (recommended for most users, requires ~3GB of storage space)
 
-By default, `hi-fever` includes a reciprocal database (`hi-fever/data/minimal_reciprocal.dmnd`) with the most frequent and informative hits you can get while searching for EVEs in vertebrate genomes. We provide it as an alternative to the full NCBI non reduntand protein database (`nr`) and Reference Virus Database (`RVDB`). which normally require >100GB of storage space. Whilst we have made all efforts to preserve a diversity of informative proteins in the minimal reciprocal database, there is a chance that X.
+By default, `hi-fever` includes a reciprocal database (`hi-fever/data/minimal_reciprocal.dmnd`) with the most frequent and informative hits you can get while searching for EVEs in vertebrate genomes. We provide it as an alternative to the full NCBI non reduntand protein database (`nr`) and Reference Virus Database (`RVDB`). which normally require >100GB of storage space. Whilst we have made all efforts to preserve a diversity of informative proteins in the minimal reciprocal database, there is a chance that the closest EVE match will not be represented.
 
 
 2. **Full reciprocal databases** (recommended for large workstations and cluster computers, requires ~115 GB of storage space)
@@ -215,7 +216,7 @@ diamond makedb --in U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fast
     The commands above offer a template for downloading and formatting these databases, though it is recommended to edit them to install the most recent database releases. These commands require the diamond and mmseqs, both of which are provided in the conda environment distributed with HI-FEVER.
 
 
-3. **Customed reciprocal database** (recomended only for users with previous knowledge about their EVEs): 
+3. **Custom reciprocal database** (recomended only for users with previous knowledge about their EVEs): 
 `hi-fever`builts a reciprocal database a user-provided fasta file or a prebuilt diamond database (specified under the `--reciprocal_db` parameter). This is not recommended unless you already have a lot of information about the EVEs that you are searching for, as it will not easily distinguish between true EVEs and host cross-matches.
 
 ### Example runs
@@ -308,10 +309,18 @@ HI-FEVER provides a variety of output information about candidate EVEs, suited t
 Here we should inclide the libraries, the programs that we use, and the citation to the paper:
 
 hi-fever is based on the following libraries and programs directory along with their license:
-- Biopython
-- Seqtk
-- DIAMOND
-- ???
+- Biopython (https://biopython.org/)
+- Seqtk (https://github.com/lh3/seqtk)
+- DIAMOND (https://github.com/bbuchfink/diamond)
+- BBmap (https://github.com/BioInfoTools/BBMap)
+- BLAST (https://blast.ncbi.nlm.nih.gov/Blast.cgi)
+- Entrez (https://www.ncbi.nlm.nih.gov/Web/Search/entrezfs.html)
+- MMSeqs2 (https://github.com/soedinglab/MMseqs2)
+- Nextflow (https://www.nextflow.io/)
+- Python3 (https://www.python.org/)
+- Wise2 (https://www.ebi.ac.uk/~birney/wise2/)
+- Seqkit (https://bioinf.shenwei.me/seqkit/)
+- Bedtools (https://bedtools.readthedocs.io/en/latest/index.html)
 
 ### Citation
 Cite our work at: Please cite (paper) when using HI-FEVER in your projects.
