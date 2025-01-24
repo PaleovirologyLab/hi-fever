@@ -1,51 +1,191 @@
 # hi-fever
 
-> **Hi**gh-throughput next**f**low **EVE** **r**ecovery
+## **Hi**gh-throughput next**f**low **EVE** **r**ecovery
+`hi-fever` is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. It aims to address common issues in paleovirology including cross-matches between host proteins and EVEs, computational burden of EVE searches and incompatability between software packages or platforms. We provide HI-FEVER as an accessible and informative workflow for any EVE-discovery project.
 
-## ABOUT
++ [Installation](#installation)
+  - [Conda installation](#conda-installation)
+  - [Docker image](#docker-image)
++ [Usage](#usage)
+  - [Inputs](#inputs)
+  - [Outputs](#outputs)
+  - [Parameters](#parameters)
++ [Examples](#examples)
+  - [Input examples](#input-examples)
+    - [Query proteins](#query-proteins)
+    - [Host genomes](#host-genomes)
+    - [Reciprocal database](#reciprocal-database)
+  - [Example runs](#example-runs)
++ [Interpreting results](#interpreting-results)
++ [Features](#features)
++ [Features](#features)
 
-Hi-fever is a Nextflow workflow for finding endogenous viral elements (EVEs) in host genomes. It aims to address common issues in paleovirology including cross-matches between host proteins and EVEs, computational burden of EVE searches and incompatability between software packages or platforms. We provide HI-FEVER as an accessible and informative workflow for any EVE-discovery project.
+## Installation
 
-Some features:
-
-- Protein-to-DNA based search allows detection of divergent and ancient EVEs
-- Designed to function with millions of input query proteins
-- Reconstructs the predicted EVE protein based on its closest modern match
-- Harnesses parallelisation to optimise compute resources
-- Scales from laptop to cluster
-- Conda and Docker compatible
-- LINUX, Windows and MAC compatible
-
-HI-FEVER provides a variety of output information about candidate EVEs, suited to many downstream purposes. Outputs include:
-- Genomic coordinates of candidate EVEs
-- Closest matches in the reciprocal databases, including full taxonomical information
-- Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware), with extension beyond original hit
-- Extracted nucleotide sequence of each candidate EVE and flanking host genome sequence
-- Metadata & statistics of the genome assemblies screened
-
-Please cite (paper) when using HI-FEVER in your projects.
-
-## INSTALLATION
-
-To install the code and workflow of HI-FEVER, clone the repo, e.g., with GitHub CLI:
+First, clone the `hi-fever` repository from GitHub:
 
 ```
 gh repo clone Paleovirology/hi-fever
 ```
 
-Alongside the code, a database to perform the reciprocal DIAMOND search is required. We provide three options for this based on your search requirements and computational resources.
+### Conda installation
 
-### Option 1: Minimal reciprocal database (recommended for most users, requires ~3GB of storage space)
+Once you have cloned the repository, the simplest way to run `hi-fever` is to create a conda environment using the `environment.yml` file to install of the dependencies including Nextflow.
 
-Download our pre-prepared minimal reciprocal database from (link) and place it in the hi-fever/data folder. This is provided as an alternative to the full NCBI nr and RVDB databases, which normally require >100GB of storage space. Whilst we have made all efforts to preserve a diversity of informative proteins in the minimal reciprocal database, there is a chance that X.
+**Requirements:** If conda is not installed in your work station, install it from [here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
+
+1. Create the `hi-fever` environment:
+```
+conda env create -f environment.yml
+```
+
+2. Activate the environment: 
+```
+conda activate hi-fever
+```
+
+3. Run the workflow:
+```
+nextflow hi-fever.nf
+```
+
+**Optional: Conda via job-scheduler**
+
+On HPC clusters a job scheduler such as SLURM is usually installed.
+To run the `Conda` environment on compute nodes, a template SLURM script is provided (`cluster-hi-fever.slurm`). To submit on a cluster:
+
+```
+sbatch cluster-hi-fever.slurm
+```
+
+### Docker image 
+When working on MAC computers or a cloud environment you might want to create a singularity image. 
+
+**Requirements:**
+- Nextflow: can be installed via [this link](https://www.nextflow.io/docs/latest/getstarted.html). It should also be added to your `$PATH`.
+- Docker Engine: can be installed, for ubuntu from [here](https://docs.docker.com/engine/install/ubuntu). Confirm that the the installation is working running `sudo docker run hello-world`.
+
+1. Configure Docker to run as a non-root user:
+```
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
+docker run hello-world
+```
+
+2. Build and check the hi-fever Docker image:
+```
+cd docker
+docker build -t hi-fever .
+docker images
+cd ..
+```
+
+3. Run the workflow:
+```
+nextflow hi-fever.nf -with-docker hi-fever
+```
+
+## Usage
+
+### Inputs 
+- **Query proteins:** The viral proteins that you want to evaluate whether something similar exist in the host genomes. You can provide it as a `.fasta` file or diamond database (`.dmnd`) built from your query proteins. The workflow will automatically detect the type of file you provided
+- **Host genome(s):** To provide information about the genomes you would like to screen, provide a custom `ftp` file in plain text (example at `data/ftp_list.txt`)
+- **E-mail (`--email`):** users need to provide an email in that is used to fetch the NCBI-database with `Efetch` in order to get taxonomical information about the protein hits and the host genomes.
+- **Proteins for reciprocal search:** `hi-fever` performs a second DIAMOND search to expand on the annotation of the hits resulting from the DIAMOND against the query proteins. A default at reciprocal database is provided at `data/minimal_reciprocal.dmnd`.
+- **Outoput directory `--outdir`:** Provide a name for folder where results will be stored. Default to `hi-fever/output`
+
+### Outputs 
+HI-FEVER creates 2 folders in the `--outputdir`:
+
+**Sequences (`output/fastas` folder):**
 
 
-### Option 2: Full reciprocal databases (recommended for large workstations and cluster computers, requires ~115 GB of storage space)
+- `loci-context-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs including the genomic context (flanking regions etc.).
+- `loci-merged-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs.
 
-Download and prepare the databases used for the reciprocal searches. It is recommended to download the latest version of both the NCBI nr database and RVDB proteins database for the most accurate EVE annotations.
-- A preclustered nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering).
-- RVDB was developed by Arifa Khan's group at CBER. For hi-fever, RVDB-prot is required, a protein version maintained at the Institut Pasteur [with archives available here](https://rvdb-prot.pasteur.fr).
-- The commands below offer a template for downloading and formatting these databases, though it is recommended to edit them to install the most recent database releases. These commands require the diamond and mmseqs, both of which are provided in the conda environment distributed with HI-FEVER.
+> Note: Sequences in this folder are candidate EVEs. We recommend a further filtering step for these sequences since many EVE candidates are likely to be cross-matches to host proteins. You can use the annotation results in the SQL folder to identify the `locus-id` of interesting candidates. Use the `locus-ids` accession to retrieve target sequences for downstream analysis. 
+
+**Tables and metada (`output/sql` folder):**
+
+- `assembly_metadata.tsv` information about the genome assemblies provided in the ftp file including taxonomy, submitter, assembly level etc.
+- `assembly_stats.tsv` statistics about the genome assemblies provided in the ftp file including size and coverage
+- `genewise.tsv` predicted reconstructed sequences of each EVE candidate
+- `locus_assembly_map.tsv` file mapping the genomic locus ID to the assembly from which it came
+- `matches.dmnd.annot.tsv` results of the initial forward DIAMOND search of query proteins against genome assemblies
+- `predicted_ORFs.tsv` predicted ORFs within the region of each candidate EVE
+- `reciprocal-*-matches.dmnd.tsv` results of the reciprocal DIAMOND searches of candidate EVEs against reciprocal databases. There will be one result file for each reciprocal database search.
+- `taxonomy_table.tsv` taxonomy data for every genome assembly and reciprocal hit from the HI-FEVER run
+
+### Parameters
+- `--query_file_aa data/circoviridae.fa`: Custom protein query file in fasta format (default: protein_query.fasta)
+- `--ftp_file data/assemblies.txt`: Custom ftp file in plain text (default: ftp_list.txt)
+- `--reciprocal_db file custom.dmnd`: File with proteins or database used during the reciprocal search (default: minimal_reciprocal.dmnd)
+- `--outdir herpesviridae_vs_tarsier`: Name of output directory (default: hifever_output)
+- `--mmseqs_minseqid 0.70`: Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%). Input protein queries are clustered prior to the search to avoid redundant searches of highly identical proteins
+- `--mmseqs_cover 0.80`: Minimum percentage of cluster member sequence length that must overlap with the representative sequence (default: 0.90 = 90%)
+- `chunk_size 10000`: Size of host genome to process per DIAMOND forward search (default: 50000). Reducing this number will return more hits but take longer
+- `--diamond_forks 8`: DIAMOND fork count. By default Nextflow attempts to run all available forward DIAMOND tasks in parallel (one for each currently downloaded assembly), which can lead to overuse of memory resources and job termination. On local machines and clusters, it is therefore suggested to limit the number of parallel DIAMOND tasks (i.e., "forks") allowed at once. For setting the value, we recommend total cores / 12. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process (default: 4 for cluster workflow)
+- `--diamond_mode ultra-sensitive`: [DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default: very-sensitive)
+- `--diamond_matrix BLOSUM45`: [DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#alignment-options) (default: BLOSUM62)
+- `--interval 500`: Maximum interval length allowed between features in the context FASTA (default: 1000). This parameter modifies the allowed distance between BLAST hits before they are merged and counted as one hit
+- `--flank 500`: Maximum length of (available) flanking sequence to add upstream and downstream of detected features in the context FASTA (default: 3000). This parameter allows you to modify how much host sequence upstream and downstream of the BLAST hits you would like to extract and keep for downstream analysis.
+- `--orf_size_nt 300`: Minimum length of extracted ORFs, in nucleotides (default: 150). This parameter allows you to alter the size threshold used when searching for ORFs within EVE hits
+- `--genewise_matrix BLOSUM45`: Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, BLOSUM45, BLOSUM30
+- `--stop_task soft-mask`: Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], soft-mask [convert in-frame STOPs to lowercase
+- `--pairs_per_task 100`: Subset ($n$) of total loci count ($N$) processed by each Genewise task. To ensure equivalent workload across tasks and a high level of parallelisation, Genewise operations are split into $T$ tasks, where $T = N/n$ (default: 500)
+- `-with-report report.html`: Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage)
+
+
+## Examples
+### Input examples
+
+#### Query proteins
+HI-FEVER searches host genomes for matches against protein queries. As such, it requires a file providing the ftp list of genomes to be screened and a fasta file of protein queries. Examples of these files are below:
+
+
+```
+>ADI48253.1 putative Rep [Circoviridae TM-6c]
+MQSVNWCFTLNNYTNEDVNKLKQVKCRYICLGFEVGDKKQTPHIQGFIQFEKKVRLSVWKKINKKIHAEI
+MKGTIEQAINYCKKSGTFEERGEIIKMGERRDLKEAKKKCAEVGLRAITDCESTYNLQVIRNCQIMLEYH
+EKERDFKPEVIWIYGESGAGKTKYISEKCAEVDTYWKDATKWWNGYDRHEITVMDDFRASNMKMNELLKL
+IDRYPHRVEIKGGFRQMLSKKIYISSIMHPKDVYNLPEEPVKQLLRRIDTIIKI
+
+>NP_042987.1 Rep [Human betaherpesvirus 6A]
+MFSIINPSDDFWTKDKYIMLTIKGPMEWEAEIPGISTDFFCKFSNVSVPHFRDMHSPGAPDIKWITACTK
+MIDVILNYWNNKTAVPTPAKWYAQAENKAGRPSLILLIALDGIPSATIGKHTTEIRGVLIKDFFDGNAPK
+IDDWCTYAKTKKNGGGTQVFSLSYIPFALLQIIRPQFQWAWTNINELGDVCDEIHRKHIISHFNKKPNVK
+LMLFPKDGINGISLKSKFLGTIEWLSDLGIVTEDAWIRRDIRSYMQLLTLTHGDVLIHRALSIAKKRIRA
+TRKAIDFIAHIDTDFQIYENPVYQLFCLQSFDPILAGTILYQWLSHRGGKKNTVSFIGPPGCGKSMLTGA
+ILENIPLHGILHGSLNTKNLRAYGQVLVLWWKDISINFDNFNIIKSLLGGQKIIFPINENDHVQIGPCPI
+IATSCVDIRSMVHSNLHKINLSQRVYNFTFDKVIPRNFPVIQKDDINQFLFWARNRSINCFIDYTVPKIL
+```
+>A FASTA file containing protein sequences (default 'protein_query.fasta') e.g:
+
+#### Host genomes
+The host genomes file (`assemblies.ftps`) should be a list of links to genome assemblies:
+
+```
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/023/065/795/GCA_023065795.1_ASM2306579v1
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ESG2_1.0
+
+```
+
+>A text file containing ftp links for assemblies to process (default: 'ftp_list.txt'). Links to assemblies available from NCBI can be found on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites. For example `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
+
+#### Reciprocal database
+
+An escencial step in `hi-fever` is the reciprocal DIAMOND search. There are three options of input databases that you can use for this step based on your research question and your computational resources:
+
+1. **Minimal reciprocal database** (recommended for most users, requires ~3GB of storage space)
+
+By default, `hi-fever` includes a reciprocal database (`hi-fever/data/minimal_reciprocal.dmnd`) with the most frequent and informative hits you can get while searching for EVEs in vertebrate genomes. We provide it as an alternative to the full NCBI non reduntand protein database (`nr`) and Reference Virus Database (`RVDB`). which normally require >100GB of storage space. Whilst we have made all efforts to preserve a diversity of informative proteins in the minimal reciprocal database, there is a chance that X.
+
+
+2. **Full reciprocal databases** (recommended for large workstations and cluster computers, requires ~115 GB of storage space)
+
+Download the latest version of both the NCBI nr database and RVDB proteins database for the most accurate EVE annotations using:
 
 ```
 cd data
@@ -69,180 +209,16 @@ awk '{if($0~">") {split($0,a,"|"); print ">"a[3],substr($0,2,length($0))} else p
 diamond makedb --in U-RVDBv26.0-prot-clustered-minid0.98-cov0.90-relabelled.fasta -d rvdbv26_clustered_wtaxa.dmnd --taxonmap prot.accession2taxid.FULL --taxonnodes nodes.dmp --taxonnames names.dmp
 ```
 
-### Option 3: Provide a custom reciprocal database
-If performing a targeted search where users want to compare their EVE candidates with a select number of custom proteins, the reciprocal database can be built from a user-provided fasta file or prebuilt diamond database. This is not recommended unless you already have a lot of information about the EVEs that you are searching for, as it will not easily distinguish between true EVEs and host cross-matches.
+> **Note:** 
+    A preclustered of nr version is [made available by Arcadia Science](https://github.com/Arcadia-Science/2023-nr-clustering).
+    RVDB was developed by Arifa Khan's group at CBER. For hi-fever, RVDB-prot is required, a protein version maintained at the Institut Pasteur [with archives available here](https://rvdb-prot.pasteur.fr).
+    The commands above offer a template for downloading and formatting these databases, though it is recommended to edit them to install the most recent database releases. These commands require the diamond and mmseqs, both of which are provided in the conda environment distributed with HI-FEVER.
 
 
-## RUNNING
+3. **Customed reciprocal database** (recomended only for users with previous knowledge about their EVEs): 
+`hi-fever`builts a reciprocal database a user-provided fasta file or a prebuilt diamond database (specified under the `--reciprocal_db` parameter). This is not recommended unless you already have a lot of information about the EVEs that you are searching for, as it will not easily distinguish between true EVEs and host cross-matches.
 
-### Prepare input files
-HI-FEVER searches host genomes for matches against protein queries. As such, it requires a file providing the ftp list of genomes to be screened and a fasta file of protein queries. Examples of these files are below:
-
-- A FASTA file containing protein sequences (default 'protein_query.fasta') e.g:
-
-```
->ADI48253.1 putative Rep [Circoviridae TM-6c]
-MQSVNWCFTLNNYTNEDVNKLKQVKCRYICLGFEVGDKKQTPHIQGFIQFEKKVRLSVWKKINKKIHAEI
-MKGTIEQAINYCKKSGTFEERGEIIKMGERRDLKEAKKKCAEVGLRAITDCESTYNLQVIRNCQIMLEYH
-EKERDFKPEVIWIYGESGAGKTKYISEKCAEVDTYWKDATKWWNGYDRHEITVMDDFRASNMKMNELLKL
-IDRYPHRVEIKGGFRQMLSKKIYISSIMHPKDVYNLPEEPVKQLLRRIDTIIKI
-
->NP_042987.1 Rep [Human betaherpesvirus 6A]
-MFSIINPSDDFWTKDKYIMLTIKGPMEWEAEIPGISTDFFCKFSNVSVPHFRDMHSPGAPDIKWITACTK
-MIDVILNYWNNKTAVPTPAKWYAQAENKAGRPSLILLIALDGIPSATIGKHTTEIRGVLIKDFFDGNAPK
-IDDWCTYAKTKKNGGGTQVFSLSYIPFALLQIIRPQFQWAWTNINELGDVCDEIHRKHIISHFNKKPNVK
-LMLFPKDGINGISLKSKFLGTIEWLSDLGIVTEDAWIRRDIRSYMQLLTLTHGDVLIHRALSIAKKRIRA
-TRKAIDFIAHIDTDFQIYENPVYQLFCLQSFDPILAGTILYQWLSHRGGKKNTVSFIGPPGCGKSMLTGA
-ILENIPLHGILHGSLNTKNLRAYGQVLVLWWKDISINFDNFNIIKSLLGGQKIIFPINENDHVQIGPCPI
-IATSCVDIRSMVHSNLHKINLSQRVYNFTFDKVIPRNFPVIQKDDINQFLFWARNRSINCFIDYTVPKIL
-```
-
-- A text file containing ftp links for assemblies to process (default: 'ftp_list.txt') e.g:
-
-```
-https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/330/505/GCA_000330505.1_EIA2_v2
-https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/023/065/795/GCA_023065795.1_ASM2306579v1
-https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/208/925/GCF_000208925.1_JCVI_ESG2_1.0
-```
-
-- Links to assemblies available from NCBI are on the [RefSeq](https://ftp.ncbi.nlm.nih.gov/genomes/refseq) and [GenBank](https://ftp.ncbi.nlm.nih.gov/genomes/genbank) ftp sites, e.g. `refseq/assembly_summary_refseq.txt` or `refseq/protozoa/assembly_summary.txt`.
-
-Before running HI-FEVER both of these files need to be in the 'data' directory.
-
-
-### Option 1: Run from a Conda environment (e.g., for working locally or on a HPC cluster)
-
-A Conda `environment.yml` file is provided for installation of all dependencies including Nextflow.
-[Get Conda here](https://docs.conda.io/en/latest/miniconda.html#linux-installers).
-
-Create and activate the hi-fever environment:
-
-```
-conda env create -f environment.yml
-conda activate hi-fever
-```
-
-Run the workflow:
-
-```
-nextflow hi-fever.nf
-```
-
-#### Running with Conda via a job scheduler, e.g., SLURM
-
-On HPC clusters a job scheduler such as SLURM is usually installed.
-
-To run the Conda environment on compute nodes, a template SLURM script is provided (`cluster-hi-fever.slurm`). To submit on a cluster:
-
-```
-sbatch cluster-hi-fever.slurm
-```
-
-### Option 2: Run from a Docker image (e.g., for working on MAC computers or a cloud environment)
-
-[Install Nextflow and add to $PATH](https://www.nextflow.io/docs/latest/getstarted.html).
-
-Install Docker Engine, e.g., [for Ubuntu](https://docs.docker.com/engine/install/ubuntu), and run `sudo docker run hello-world` to confirm the installation is working.
-
-Configure Docker to run as a non-root user:
-
-```
-sudo groupadd docker
-sudo usermod -aG docker $USER
-newgrp docker
-docker run hello-world
-```
-
-Build and check the hi-fever Docker image:
-
-```
-cd docker
-docker build -t hi-fever .
-docker images
-cd ..
-```
-
-Run the workflow:
-
-```
-nextflow hi-fever.nf -with-docker hi-fever
-```
-
-## Parameters
-
-Custom protein query file in fasta format (default: protein_query.fasta).
-
-- `--query_file_aa data/circoviridae.fa`
-
-Custom ftp file in plain text (default: ftp_list.txt).
-
-- `--ftp_file data/assemblies.txt`
-
-Reciprocal search settings
-
-- `--full_reciprocal TRUE` (default: FALSE) if a full NCBI nr and RVDB search will be undertaken.
-- `--build_reciprocal TRUE` (default: False) if a custom FASTA file is provided 
-- `--reciprocal_db file custom.dmnd` (default: minimal_reciprocal.dmnd) if a custom pre-built DIAMOND-formatted database (.dmnd) is provided, or if a custom FASTA file is provided and --build_reciprocal is TRUE
-
-Database to use in the reciprocal DIAMOND searches (default: X).
-
-Name of output directory (default: hifever_output).
-
-- `--outdir herpesviridae_vs_tarsier`
-
-Sequence identity threshold for clustering of the protein query (default: 0.95 = 95%). Input protein queries are clustered prior to the search to avoid redundant searches of highly identical proteins.
-
-- `--mmseqs_minseqid 0.70`
-
-Minimum percentage of cluster member sequence length that must overlap with the representative sequence (default: 0.90 = 90%).
-
-- `--mmseqs_cover 0.80`
-
-Size of host genome to process per DIAMOND forward search (default: 50000). Reducing this number will return more hits but take longer.
-
-- `chunk_size 10000`
-
-DIAMOND fork count. By default Nextflow attempts to run all available forward DIAMOND tasks in parallel (one for each currently downloaded assembly), which can lead to overuse of memory resources and job termination. On local machines and clusters, it is therefore suggested to limit the number of parallel DIAMOND tasks (i.e., "forks") allowed at once. For setting the value, we recommend total cores / 12. Note that this does not affect the reciprocal DIAMOND search, which uses all available CPUs in a single process (default: 4 for cluster workflow).
-
-- `--diamond_forks 8`
-
-[DIAMOND sensitivity](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#sensitivity-modes) (default: very-sensitive).
-
-- `--diamond_mode ultra-sensitive`
-
-[DIAMOND substitution matrix](https://github.com/bbuchfink/diamond/wiki/3.-Command-line-options#alignment-options) (default: BLOSUM62).
-
-- `--diamond_matrix BLOSUM45`
-
-Maximum interval length allowed between features in the context FASTA (default: 1000). This parameter modifies the allowed distance between BLAST hits before they are merged and counted as one hit.
-
-- `--interval 500`
-
-Maximum length of (available) flanking sequence to add upstream and downstream of detected features in the context FASTA (default: 3000). This parameter allows you to modify how much host sequence upstream and downstream of the BLAST hits you would like to extract and keep for downstream analysis.
-
-- `--flank 500`
-
-Minimum length of extracted ORFs, in nucleotides (default: 150). This parameter allows you to alter the size threshold used when searching for ORFs within EVE hits.
-
-- `--orf_size_nt 300`
-
-Genewise substitution matrix (default: BLOSUM62). Options: BLOSUM80, BLOSUM62, BLOSUM45, BLOSUM30.
-
-- `--genewise_matrix BLOSUM45`
-
-Modify in-frame STOP codons in the Genewise coding DNA sequence output (default: remove). Options: remove [delete in-frame STOPs from the coding sequence], soft-mask [convert in-frame STOPs to lowercase].
-
-- `--stop_task soft-mask`
-
-Subset ($n$) of total loci count ($N$) processed by each Genewise task. To ensure equivalent workload across tasks and a high level of parallelisation, Genewise operations are split into $T$ tasks, where $T = N/n$ (default: 500).
-
-- `--pairs_per_task 100`
-
-Create Nextflow html workflow report (includes run time, user information, task metadata, and CPU, memory, and I/O usage).
-
-- `-with-report report.html`
-
-## EXAMPLE RUNS
+### Example runs
 Some example sets of parameters are shown below as a guide to how to customise your HI-FEVER run.
 
 A default run
@@ -284,25 +260,7 @@ Returning longer candidate EVEs by merging more distant neigboring hits and retu
 nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --interval 3000 --flank 5000
 ```
 
-## INTERPRETING RESULTS
-HI-FEVER outputs several files in 2 results folders: accessory_fastas and SQL. A detailed description of each output is below:
-
-#### Accessory fastas folder
-
-This folder contains the sequence data of candidate EVEs. These files are not recommended for direct analysis without further filtering. They contain the results for every candidate EVE, many of which are likely to be cross-matches to host proteins. We recommend to use the annotation results in the SQL folder to identify EVEs of interest and extract them specifically from these fasta files before further analysis.
- - `loci-context-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs including the genomic context (flanking regions etc.).
- - `loci-merged-coordinates.fasta.gz` nucleotide sequences of the candidate EVEs.
-
-#### SQL folder
-This folder contains tables and metadata relating to the candidate EVEs.
- - `assembly_metadata.tsv` information about the genome assemblies provided in the ftp file including taxonomy, submitter, assembly level etc.
- - `assembly_stats.tsv` statistics about the genome assemblies provided in the ftp file including size and coverage
- - `genewise.tsv` predicted reconstructed sequences of each EVE candidate
- - `locus_assembly_map.tsv` file mapping the genomic locus ID to the assembly from which it came
- - `matches.dmnd.annot.tsv` results of the initial forward DIAMOND search of query proteins against genome assemblies
- - `predicted_ORFs.tsv` predicted ORFs within the region of each candidate EVE
- - `reciprocal-*-matches.dmnd.tsv` results of the reciprocal DIAMOND searches of candidate EVEs against reciprocal databases. There will be one result file for each reciprocal database search.
- - `taxonomy_table.tsv` taxonomy data for every genome assembly and reciprocal hit from the HI-FEVER run
+## Interpreting results
 
 For a quick interpretation of the results, we recommend focussing on the `reciprocal-*-matches.dmnd.tsv` files for full EVE annotations. Examples of how to differentiate between EVEs and false positives is described in our publication X.
 
@@ -327,3 +285,33 @@ grep nucleoprotein reciprocal-nr-matches.dmnd.tsv
 - importing the tables in R
 
 - opening the files in Excel or a similar spreadsheet manager (not recommended for large output files) and filtering using inbuilt functions
+
+
+## Features
+
+- Protein-to-DNA based search allows detection of divergent and ancient EVEs
+- Designed to function with millions of input query proteins
+- Reconstructs the predicted EVE protein based on its closest modern match
+- Harnesses parallelisation to optimise compute resources
+- Scales from laptop to cluster
+- Conda and Docker compatible
+- LINUX, Windows and MAC compatible
+
+HI-FEVER provides a variety of output information about candidate EVEs, suited to many downstream purposes. Outputs include:
+- Genomic coordinates of candidate EVEs
+- Closest matches in the reciprocal databases, including full taxonomical information
+- Predicted EVE protein sequences and cDNA (frameshift and premature STOP codon aware), with extension beyond original hit
+- Extracted nucleotide sequence of each candidate EVE and flanking host genome sequence
+- Metadata & statistics of the genome assemblies screened
+
+## Acknowledgements
+Here we should inclide the libraries, the programs that we use, and the citation to the paper:
+
+hi-fever is based on the following libraries and programs directory along with their license:
+- Biopython
+- Seqtk
+- DIAMOND
+- ???
+
+### Citation
+Cite our work at: Please cite (paper) when using HI-FEVER in your projects.
