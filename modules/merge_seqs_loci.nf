@@ -10,7 +10,7 @@ process merge_seqs_loci {
     path "loci-context-coordinates.fasta.gz", emit: loci_merged_context_gz
     path "all_context_coords.bed", emit: all_context_coords_bed
 
-    publishDir "${params.outdir}/accesory_fastas", mode: "copy", pattern: "loci-merged-coordinates.fasta.gz"
+    publishDir "${params.outdir}/accesory_fastas", mode: "copy", pattern: "loci-merged-coordinates.fasta"
     publishDir "${params.outdir}/accesory_fastas", mode: "copy", pattern: "loci-context-coordinates.fasta.gz"
 
     """
@@ -29,7 +29,7 @@ process merge_seqs_loci {
     loci-context-coordinates.fasta.gz
 
     # Zip up query file for outdir publication
-    gzip loci-merged-coordinates.fasta > loci-merged-coordinates.fasta.gz
+    # gzip loci-merged-coordinates.fasta > loci-merged-coordinates.fasta.gz
 
     """
 
