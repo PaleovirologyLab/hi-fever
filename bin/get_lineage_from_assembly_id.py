@@ -28,6 +28,7 @@ if __name__ =="__main__":
                         help="Name of the output file")
     args = parser.parse_args()
     
+    Entrez.email = args.email
     # Read host taxonomy table
     assembly_md = pd.read_csv(args.assembly_table, sep="\t", header=None)
     assembly_md.columns = [ 'SpeciesName', 'AssemblyAccession', 'FtpPath_GenBank',
