@@ -32,8 +32,8 @@ def parse_taxonomy_information (taxonomy):
     tax_info['all_taxonomy']= ':'.join(taxonomy)
 
     # Get virus information
-    tax_info['viral_family']= 'NA'
-    tax_info['order']= 'NA'
+    tax_info['family']= 'NA'
+    tax_info['viral_order']= 'NA'
     tax_info['viral_kingdom']= 'NA'
 
     for item in taxonomy:
@@ -42,7 +42,7 @@ def parse_taxonomy_information (taxonomy):
         elif item.endswith('virales'):
             tax_info.update({'viral_order': item})
         elif item.endswith('virae'):
-            print(item, type(item))
+            # print(item, type(item))
             tax_info.update({'viral_kingdom': item})
 
     return tax_info    
@@ -59,12 +59,19 @@ if __name__ =="__main__":
                         help="Number of seconds to pause between queries (default 1).")
     parser.add_argument("--outfile", type=str, default="diamond-matches-taxonomy.csv",
                         help="Name of the output file")
+    parser.add_argument("--debug", action='store_true', 
+                        help="In debug mode take a table of accns as input")
     args = parser.parse_args()
 
     # Read diamond hits
 
-    all_hits = pd.read_csv(args.diamond_hits, sep="\t", usecols=[0,1], header=None)
-    all_hits.columns = ["hit_accn", "locus"]
+    if args.debug: 
+        all_hits = pd.read_csv(args.diamond_hits, sep="\t", usecols=[0], header=None)
+        all_hits.columns = ["hit_accn"]
+    else:
+        all_hits = pd.read_csv(args.diamond_hits, sep="\t", usecols=[0,1], header=None)
+        all_hits.columns = ["hit_accn", "locus"]
+    
     unique_accn = all_hits["hit_accn"].unique()
     accns = unique_accn.tolist()
     # Get taxonomical information for unique accessions
@@ -86,7 +93,7 @@ if __name__ =="__main__":
             tax_info = parse_taxonomy_information(taxonomy)
             tax_info['record_id'] = record.id  # Add record_id to table
             accns_tax.append(tax_info)
-            print(tax_info)
+            # print(tax_info)
         
         sleep(args.delay)
 
