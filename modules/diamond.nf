@@ -63,7 +63,7 @@ process forward_diamond {
 
 }
 
-process reciprocal_diamond {
+process single_reciprocal_diamond {
 
     input:
     path reciprocal_db
@@ -162,7 +162,7 @@ process find_best_diamond_hits {
 }
 
 
-process reciprocal_diamond_full {
+process full_reciprocal_diamond {
 
     input:
     path reciprocal_nr_db
