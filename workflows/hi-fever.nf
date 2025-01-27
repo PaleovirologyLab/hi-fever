@@ -1,36 +1,41 @@
 // Parse inputs
-include { parse_ftp } from '../modules/parse_ftp.nf'
-include { check_file_type as check_query_type } from '../modules/parse_ftp.nf'
-include { check_file_type as check_reciprocal_type} from '../modules/parse_ftp.nf'
+include { parse_ftp } from '../modules/process_host_info.nf'
+include { check_file_type as check_query_type } from '../modules/utils.nf'
+include { check_file_type as check_reciprocal_type} from '../modules/utils.nf'
 include { cluster_seqs } from '../modules/cluster_seqs.nf'
 
-// Get inputs information
-include { download_assemblies } from '../modules/download_assemblies.nf'
-include { get_assembly_metadata_all; get_metadata} from '../modules/get_assembly_metadata.nf'
-include { assembly_stats } from '../modules/assembly_stats.nf'
+// Process host genomes and get their taxonomical information
+include { download_assemblies } from '../modules/process_host_info.nf'
+include { download_extract_host_metadata; get_metadata} from '../modules/process_host_info.nf'
+include { assembly_stats } from '../modules/process_host_info.nf'
+include { fetch_host_taxonomy } from '../modules/process_host_info.nf'
+include { build_host_taxonomy_table } from '../modules/process_host_info.nf'
 
-// DIAMOND processes
+// DIAMOND-related process
 include { build_diamond_db as build_query} from '../modules/diamond.nf'
 include { build_diamond_db as build_reciprocal} from '../modules/diamond.nf'
 include { forward_diamond } from '../modules/diamond.nf'
-include { reciprocal_diamond; reciprocal_diamond_full } from '../modules/diamond.nf'
+include { single_reciprocal_diamond; full_reciprocal_diamond } from '../modules/diamond.nf'
 include { find_best_diamond_hits } from '../modules/diamond.nf'
 
-// Concatenating and extracting best hits when reciprocal DIAMOND
-include { merge_seqs_loci} from '../modules/post_processing_files.nf'
+// Concatenate and extract best hits after forward DIAMOND
 include { extract_seqs_annotate_matches } from '../modules/intersect_domains_merge_extract.nf'
-include { orf_extract } from '../modules/orf_extract.nf'
+include { merge_seqs_loci} from '../modules/post_processing_files.nf'
+
+// Build ancestral protein
 include { genewise } from '../modules/genewise.nf'
 
-// Process file for outputs and publishing
-include { build_taxonomy_table } from '../modules/build_taxonomy_table.nf'
-include { build_diamond_taxonomy_table } from '../modules/build_taxonomy_table.nf'
-include { build_host_lineage_table } from '../modules/build_taxonomy_table.nf'
+// Extract orfs from forward DIAMOND
+include { orf_extract } from '../modules/orf_extract.nf'
+
+// Getting hits taxonomy tables
+include { build_hits_taxonomy_table } from '../modules/hits_taxonomy.nf'
+include { fetch_hits_taxonomy_from_accns } from '../modules/hits_taxonomy.nf'
 
 // Publish concatenated tables with results of all hosts
-include { concatenate_publish_tables as pulish_predicted_orfs} from '../modules/post_processing_files.nf'
-include { concatenate_publish_tables as pulish_forward_diamond} from '../modules/post_processing_files.nf'
-include { concatenate_publish_tables as pulish_assembly_map} from '../modules/post_processing_files.nf'
+include { concatenate_publish_tables as pulish_predicted_orfs} from '../modules/utils.nf'
+include { concatenate_publish_tables as pulish_forward_diamond} from '../modules/utils.nf'
+include { concatenate_publish_tables as publish_assembly_map} from '../modules/utils.nf'
 
 // Run local workflow
 
@@ -56,16 +61,19 @@ workflow HIFEVER {
                                                         newLine: false, 
                                                         storeDir: "${params.outdir}/sql")
 
-    // Get assembly metadata
-    if (!params.dont_get_metada) {
-        // For target genomes, requires email
+    if (!params.get_all_metadata) {
+        // Download metadata only for genomes on ftp file
         metadata_channel = get_metadata(assembly_stats)
-        build_host_lineage_table(metadata_channel.assembly_metadata)        
+        fetch_host_taxonomy(metadata_channel.assembly_metadata)        
 
     }  
-    else if (params.get_all_metada) {
-        // Download assembly metadata for all eukaryots, subset target
-        get_assembly_metadata_all()
+    else {
+        // Download assembly metadata for all eukaryots
+        download_extract_host_metadata()
+        def ncbi_tax_table = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
+        build_host_taxonomy_table( ftp_ch, 
+                                   get_assembly_metadata.out.assembly_metadata_ch, 
+                                   ncbi_tax_table)
 
     }
 
@@ -87,20 +95,20 @@ workflow HIFEVER {
     all_context_coords_bed = merge_seqs_loci.out.all_context_coords_bed.collect()
 
     // Run reciprocal DIAMOND
-    if (!params.full_reciprocal) {
+    if (params.custom_reciprocal) {
         
-        def reciprocal_ch = Channel.fromPath(params.reciprocal_db, checkIfExists: true)
+        def reciprocal_ch = Channel.fromPath(params.custom_reciprocal_db, checkIfExists: true)
         reciprocal_type = reciprocal_ch | check_reciprocal_type
 
         // Create reciprocal database if input is in fasta, else use reciprocal_db
         reciprocal_db = (reciprocal_type == 'fasta' ? 
-                            build_reciprocal("query", reciprocal_ch): reciprocal_ch)
+                            build_reciprocal("reciprocal", reciprocal_ch): reciprocal_ch)
         
         // run reciprocal DIAMOND and publish results
-        reciprocal_diamond(reciprocal_db, loci_merged_fa)    
-        reciprocal_matches = reciprocal_diamond.out.reciprocal_matches.collect()
-        reciprocal_seqs = reciprocal_diamond.out.reciprocal_seqs.collect()
-        reciprocal_hits = reciprocal_diamond.out.reciprocal_hits.collect()
+        single_reciprocal_diamond(reciprocal_db, loci_merged_fa)    
+        reciprocal_matches = single_reciprocal_diamond.out.reciprocal_matches.collect()
+        reciprocal_seqs = single_reciprocal_diamond.out.reciprocal_seqs.collect()
+        reciprocal_hits = single_reciprocal_diamond.out.reciprocal_hits.collect()
 
         // Find best hits    
         find_best_diamond_hits(forward_matches, 
@@ -113,20 +121,31 @@ workflow HIFEVER {
 
         best_hit_proteins_val = find_best_diamond_hits.out.best_hits_fa_ch.collect()
         all_diamond_hits = find_best_diamond_hits.out.forward_plus_reciprocal_dmd_hits.collect()
+        
+        // Make taxonomy and publish table for proteins
+        hits_taxonomy = fetch_hits_taxonomy_from_accns(all_diamond_hits)
     }
     else {
         // Reciprocal DIAMOND with rvdb and nr protein databases
-        def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db)
-        def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db)
+        def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db, checkIfExists: true)
+        def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db, checkIfExists: true)
         
-        reciprocal_diamond_full(reciprocal_nr_db_ch, reciprocal_rvdb_db_ch,
+        full_reciprocal_diamond(reciprocal_nr_db_ch, reciprocal_rvdb_db_ch,
                                 loci_merged_fa, forward_matches,
                                 query_proteins)
-        best_pairs_subsets = reciprocal_diamond_full.out.best_pairs_txt.splitText(
+        best_pairs_subsets = full_reciprocal_diamond.out.best_pairs_txt.splitText(
                                                             by: params.pairs_per_task, 
                                                             file: true)
-        best_hit_proteins_val = reciprocal_diamond_full.out.best_hits_fa_ch.collect()
-        all_diamond_hits = reciprocal_diamond_full.out.mixed_hits.collect()
+        best_hit_proteins_val = full_reciprocal_diamond.out.best_hits_fa_ch.collect()
+        all_diamond_hits = full_reciprocal_diamond.out.mixed_hits.collect()
+
+        // Read taxonomy table to build hits taxonomy
+        def ncbi_tax_table_hits = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
+        
+        // Build hits taxonomy from annotated diamond database
+        hits_taxonomy = build_hits_taxonomy_table( full_reciprocal_diamond.out.reciprocal_nr_matches_ch, 
+                                                   full_reciprocal_diamond.out.reciprocal_rvdb_matches_ch, 
+                                                   ncbi_tax_table_hits)
         
     }
     
@@ -139,15 +158,13 @@ workflow HIFEVER {
                                             newLine: false, 
                                             storeDir: "${params.outdir}/sql")
 
-    // Make taxonomy and publish table for proteins
-    build_diamond_taxonomy_table(all_diamond_hits)
-
     // Publish files
     cat_forward = pulish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
     predicted_orfs = orf_extract(extract_seqs_outputs.context_fa_ch, 
                                  extract_seqs_outputs.strict_coords_ch)
+
     cat_orfs = pulish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
     locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
-    cat_assembly_map = pulish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
+    cat_assembly_map = publish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
 
 }
