@@ -20,7 +20,7 @@ include { find_best_diamond_hits } from '../modules/diamond.nf'
 
 // Concatenate and extract best hits after forward DIAMOND
 include { extract_seqs_annotate_matches } from '../modules/intersect_domains_merge_extract.nf'
-include { merge_seqs_loci} from '../modules/post_processing_files.nf'
+include { merge_seqs_loci} from '../modules/merge_seqs_loci.nf'
 
 // Build ancestral protein
 include { genewise } from '../modules/genewise.nf'
