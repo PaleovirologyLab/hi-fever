@@ -50,8 +50,7 @@ workflow HIFEVER {
 
     // Build DIAMOND database with queries if fasta file
     query_type = query_ch | check_query_type
-    vir_db_ch = (query_type == 'fasta' ? 
-                    build_query("query", query_proteins): query_proteins)
+    vir_db_ch = (params.query_db ? query_db: build_query("query", query_proteins))
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
