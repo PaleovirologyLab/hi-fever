@@ -149,7 +149,7 @@ workflow HIFEVER {
         
     }
     
-    // Reconstrunction of encoded proteins. Returns STOP codons, frameshifts and indels
+    // Reconstruction of encoded proteins. Returns number of STOP codons, frameshifts and indels
     genewise(best_pairs_subsets,
             best_hit_proteins_val,
             loci_merged_fa,
