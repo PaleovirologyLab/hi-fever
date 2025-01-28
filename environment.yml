@@ -1,4 +1,4 @@
-name: hi-fever
+name: hi-fever-RF
 channels:
   - bioconda
   - conda-forge

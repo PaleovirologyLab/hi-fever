@@ -5,8 +5,7 @@ process cluster_seqs {
 
     output:
     path "query_db_clu_rep.fasta", emit: clust_ch
-    //path "virusdb.dmnd", emit: vir_db_ch
-    //publishDir "${params.outdir}/virusdb", mode: "copy"
+    publishDir "${params.outdir}", mode: "copy"
 
     """
     mmseqs createdb $queries query_db

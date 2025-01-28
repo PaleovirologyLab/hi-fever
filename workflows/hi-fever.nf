@@ -33,8 +33,8 @@ include { build_hits_taxonomy_table } from '../modules/hits_taxonomy.nf'
 include { fetch_hits_taxonomy_from_accns } from '../modules/hits_taxonomy.nf'
 
 // Publish concatenated tables with results of all hosts
-include { concatenate_publish_tables as pulish_predicted_orfs} from '../modules/utils.nf'
-include { concatenate_publish_tables as pulish_forward_diamond} from '../modules/utils.nf'
+include { concatenate_publish_tables as publish_predicted_orfs} from '../modules/utils.nf'
+include { concatenate_publish_tables as publish_forward_diamond} from '../modules/utils.nf'
 include { concatenate_publish_tables as publish_assembly_map} from '../modules/utils.nf'
 
 // Run local workflow
@@ -72,7 +72,7 @@ workflow HIFEVER {
         download_extract_host_metadata()
         def ncbi_tax_table = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
         build_host_taxonomy_table( ftp_ch, 
-                                   get_assembly_metadata.out.assembly_metadata_ch, 
+                                   download_extract_host_metadata.out.assembly_metadata_ch, 
                                    ncbi_tax_table)
 
     }
@@ -120,7 +120,7 @@ workflow HIFEVER {
                                                             file: true)
 
         best_hit_proteins_val = find_best_diamond_hits.out.best_hits_fa_ch.collect()
-        all_diamond_hits = find_best_diamond_hits.out.forward_plus_reciprocal_dmd_hits.collect()
+        all_diamond_hits = find_best_diamond_hits.out.forward_plus_reciprocal_dmnd_hits.collect()
         
         // Make taxonomy and publish table for proteins
         hits_taxonomy = fetch_hits_taxonomy_from_accns(all_diamond_hits)
@@ -159,11 +159,11 @@ workflow HIFEVER {
                                             storeDir: "${params.outdir}/sql")
 
     // Publish files
-    cat_forward = pulish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
+    cat_forward = publish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
     predicted_orfs = orf_extract(extract_seqs_outputs.context_fa_ch, 
                                  extract_seqs_outputs.strict_coords_ch)
 
-    cat_orfs = pulish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
+    cat_orfs = publish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
     locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
     cat_assembly_map = publish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
 

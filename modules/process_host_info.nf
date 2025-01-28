@@ -47,7 +47,7 @@ process get_metadata {
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "assembly_metadata.tsv"
 
     """
-    get_assemblies_metada.py $assembly_stats $params.email --outfile assembly_metadata.tsv
+    get_assemblies_metadata.py $assembly_stats $params.email --outfile assembly_metadata.tsv
     
     """
 

@@ -10,8 +10,7 @@ process extract_seqs_annotate_matches {
     path "*_locus_assembly_map.tsv", emit: locus_assembly_map_ch
     path "*_strict_coords.bed", emit: strict_coords_ch
     
-    // publishDir "${params.outdir}", mode: "copy", pattern: "*_strict_coords.bed"
-    // publishDir "${params.outdir}", mode: "copy", pattern: "*_forward_matches.dmnd.annot.tsv"
+    // publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*_forward_matches.dmnd.annot.tsv"
     // publishDir "${params.outdir}", mode: "copy", pattern: "*_strict.fasta"
     // publishDir "${params.outdir}", mode: "copy", pattern: "*_context.fasta"
     // publishDir "${params.outdir}", mode: "copy", pattern: "*_locus_assembly_map.tsv"
@@ -34,7 +33,6 @@ process extract_seqs_annotate_matches {
     # Reports:
     # sseqid_(protein) sstart send locus_id qseqid_best qstart_overlap qend_overlap qstart_best qend_best qframe_best qlen_best slen
     # eval bitscore pident len mismatch gapopen domain_overlap_start domain_overlap_end best_start best_end best_bitscore best_i-Evalue
-    # model_acc model_name model_description
 
 
     # Generate strict_coords

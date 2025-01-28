@@ -24,8 +24,7 @@ process forward_diamond {
     output:
     tuple path("*.dmnd.tsv"), path("*.gz*nsq")
     
-    // publishDir "${params.outdir}", mode: "copy", pattern: "*.dmnd.tsv"
-    // publishDir "${params.outdir}", mode: "copy", pattern: "*.gz*nsq"
+    //publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*.dmnd.tsv"
 
     """
 
@@ -75,8 +74,6 @@ process single_reciprocal_diamond {
     path "reciprocal_seqs.fasta", emit: reciprocal_seqs
 
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
-    // publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_hits.txt"
-    // publishDir "${params.outdir}", mode: "copy", pattern: "reciprocal_seqs.fasta"
     
 
     """ 
@@ -116,7 +113,7 @@ process find_best_diamond_hits {
     output:
     path "best_hits.fasta", emit: best_hits_fa_ch
     path "best_pairs.txt", emit: best_pairs_txt
-    path "mixed_hits.txt", emit: forward_plus_reciprocal_dmd_hits
+    path "mixed_hits.txt", emit: forward_plus_reciprocal_dmnd_hits
     
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_hits.fasta"
     // publishDir "${params.outdir}", mode: "copy", pattern: "best_pairs.txt"

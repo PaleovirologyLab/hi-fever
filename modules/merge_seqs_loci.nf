@@ -10,8 +10,8 @@ process merge_seqs_loci {
     path "loci-context-coordinates.fasta.gz", emit: loci_merged_context_gz
     path "all_context_coords.bed", emit: all_context_coords_bed
 
-    publishDir "${params.outdir}/accesory_fastas", mode: "copy", pattern: "loci-merged-coordinates.fasta"
-    publishDir "${params.outdir}/accesory_fastas", mode: "copy", pattern: "loci-context-coordinates.fasta.gz"
+    publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "loci-merged-coordinates.fasta"
+    publishDir "${params.outdir}/accessory_fastas", mode: "copy", pattern: "loci-context-coordinates.fasta.gz"
 
     """
 
