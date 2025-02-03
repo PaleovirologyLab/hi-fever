@@ -86,6 +86,7 @@ dependencies:
   - pthread-stubs
   - python
   - python_abi
+  - pandas
   - readline
   - rhash
   - seqkit
