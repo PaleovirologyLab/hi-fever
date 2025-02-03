@@ -224,41 +224,41 @@ Some example sets of parameters are shown below as a guide to how to customise y
 
 A default run
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results
 ```
 
 
 Using the full NCBI and nr databases for the reciprocal DIAMOND search
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --full_reciprocal TRUE
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --full_reciprocal TRUE
 ```
 
 
 Providing a custom database (in fasta format) for the reciprocal DIAMOND search
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --reciprocal_db reciprocal_proteins.fasta
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --reciprocal_db reciprocal_proteins.fasta
 ```
 
 
 Providing a custom database (in dmnd format) for the reciprocal DIAMOND search
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --dont_build_reciprocal TRUE --reciprocal_db reciprocal_proteins.fasta
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --dont_build_reciprocal TRUE --reciprocal_db reciprocal_proteins.fasta
 ```
 
 
 Clustering the query proteins at low identity prior to DIAMOND searches. Suitable if you have many similar query proteins and are looking for more general matches.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --mmseqs_minseqid 0.70 mmseqs_cover 0.60
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --mmseqs_minseqid 0.70 mmseqs_cover 0.60
 ```
 
 Customising the diamond search modes. Suitable if you want to run a less computationally-intensive search.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --diamond-forks 1 --diamond_mode sensitive
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --diamond-forks 1 --diamond_mode sensitive
 ```
 
 Returning longer candidate EVEs by merging more distant neigboring hits and returning longer flanking sequences. Suitable when searching for multiple protein integrations from one virus eg. proviruses.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_list genomes.txt --outdir hi_fever_results --interval 3000 --flank 5000
+nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --interval 3000 --flank 5000
 ```
 
 ## Interpreting results
