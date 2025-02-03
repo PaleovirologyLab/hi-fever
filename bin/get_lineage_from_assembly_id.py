@@ -6,7 +6,7 @@ Retrieve Lineage information from a TaxID (host lineage)
 
 from Bio import Entrez
 
-import modin.pandas as pd
+import pandas as pd
 import argparse
 
 def get_record_lineage(record):

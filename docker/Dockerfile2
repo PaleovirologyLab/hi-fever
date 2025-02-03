@@ -21,7 +21,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh 
 COPY environment-arm64.yml .
 
 # Update conda and create the hi-fever environment
-RUN conda install conda=24.9.1 \
+RUN conda install conda=24.11.1 \
     && conda env create -f environment-arm64.yml \
     && conda clean --all --yes
 
