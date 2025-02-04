@@ -59,7 +59,7 @@ sbatch cluster-hi-fever.slurm
 ```
 
 ### Docker image 
-When working on MAC computers or a cloud environment you might want to create a singularity image. If working on a MAC with the arm64 architecture (M1 chip, 2020 onwards) please follow the instructions in (issue link).
+When working on MAC computers or a cloud environment you might want to create a singularity image. If working on a MAC with the arm64 architecture (M1 chip, 2020 onwards) please follow the instructions in [#19](/../../issues/19).
 
 **Requirements:**
 - Nextflow: can be installed via [this link](https://www.nextflow.io/docs/latest/getstarted.html). It should also be added to your `$PATH`.
