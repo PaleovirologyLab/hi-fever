@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-LABEL maintainer = "Jose Gabriel Nino Barreat <jose.ninobarreat@biology.ox.ac.uk>"
+LABEL maintainer="Jose Gabriel Nino Barreat <jose.ninobarreat@biology.ox.ac.uk>"
 
 # Set paths to the miniconda bin directory
 ENV PATH="/root/miniconda3/bin:${PATH}"
@@ -21,11 +21,11 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-py38_23.5.2-0-Linux-x86_
 COPY environment.yml .
 
 # Update conda and create the hi-fever environment
-RUN conda install conda=23.10.0 \
+RUN conda install conda=24.11.1 python=3.12 \
     && conda env create -f environment.yml \
     && conda clean --all --yes
 
 # Load environment inside image and set path variables
 RUN echo "source activate hi-fever" > ~/.bashrc
-ENV PATH /root/miniconda3/envs/hi-fever/bin:$PATH
+ENV PATH=/root/miniconda3/envs/hi-fever/bin:$PATH
 ENV CONDA_PREFIX=/root/miniconda3/envs/hi-fever
