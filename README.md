@@ -59,7 +59,7 @@ sbatch cluster-hi-fever.slurm
 ```
 
 ### Docker image 
-When working on MAC computers or a cloud environment you might want to create a singularity image. 
+When working on MAC computers or a cloud environment you might want to create a singularity image. If working on a MAC with the arm64 architecture (M1 chip, 2020 onwards) please follow the instructions in (issue link).
 
 **Requirements:**
 - Nextflow: can be installed via [this link](https://www.nextflow.io/docs/latest/getstarted.html). It should also be added to your `$PATH`.
@@ -228,19 +228,19 @@ nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outd
 ```
 
 
-Using the full NCBI and nr databases for the reciprocal DIAMOND search
+Using the full NCBI and nr databases for the reciprocal DIAMOND search. Recommended where possible but is resource intensive and will take considerably longer.
 ```
 nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --full_reciprocal TRUE
 ```
 
 
-Providing a custom database (in fasta format) for the reciprocal DIAMOND search
+Providing a custom database (in fasta format) for the reciprocal DIAMOND search. Suitable if you have a shortlist of proteins to confirm your EVEs, however may lose information on host cross-matches. 
 ```
 nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --reciprocal_db reciprocal_proteins.fasta
 ```
 
 
-Providing a custom database (in dmnd format) for the reciprocal DIAMOND search
+Providing a custom database (in dmnd format) for the reciprocal DIAMOND search. Suitable if you have a shortlist of proteins to confirm your EVEs and have prebuilt a DIAMOND database from them.
 ```
 nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --dont_build_reciprocal TRUE --reciprocal_db reciprocal_proteins.fasta
 ```
@@ -263,9 +263,9 @@ nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outd
 
 ## Interpreting results
 
-For a quick interpretation of the results, we recommend focussing on the `reciprocal-*-matches.dmnd.tsv` files for full EVE annotations. Examples of how to differentiate between EVEs and false positives is described in our publication X.
+For a quick interpretation of the results, we recommend focussing on the `reciprocal-*-matches.dmnd.tsv` files for full EVE annotations. Examples of how to differentiate between EVEs and false positives is described in our publication (paper).
 
-We recommend parsing these tables into an SQL database for quick querying of the results. We have provided two SQL schema scripts to automatically import and process these files into searchable tables.
+We recommend parsing these tables into an SQL database for quick querying of the results. We have provided two SQL schema scripts `hi-fever-db-PostgreSQL-schema.sql` and `merge_tables.sql` to automatically import and process these files into searchable tables.
 
 Steps to run:
 
