@@ -46,7 +46,7 @@ conda activate hi-fever
 
 3. Run the workflow:
 ```
-nextflow hi-fever.nf
+nextflow main.nf
 ```
 
 **Optional: Conda via job-scheduler**
@@ -83,7 +83,7 @@ cd ..
 
 3. Run the workflow:
 ```
-nextflow hi-fever.nf -with-docker hi-fever
+nextflow main.nf -with-docker hi-fever
 ```
 
 ## Usage
@@ -224,41 +224,41 @@ Some example sets of parameters are shown below as a guide to how to customise y
 
 A default run
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results
 ```
 
 
 Using the full NCBI and nr databases for the reciprocal DIAMOND search. Recommended where possible but is resource intensive and will take considerably longer.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --full_reciprocal TRUE
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --full_reciprocal TRUE
 ```
 
 
 Providing a custom database (in fasta format) for the reciprocal DIAMOND search. Suitable if you have a shortlist of proteins to confirm your EVEs, however may lose information on host cross-matches. 
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --reciprocal_db reciprocal_proteins.fasta
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --reciprocal_db reciprocal_proteins.fasta
 ```
 
 
 Providing a custom database (in dmnd format) for the reciprocal DIAMOND search. Suitable if you have a shortlist of proteins to confirm your EVEs and have prebuilt a DIAMOND database from them.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --dont_build_reciprocal TRUE --reciprocal_db reciprocal_proteins.fasta
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --dont_build_reciprocal TRUE --reciprocal_db reciprocal_proteins.fasta
 ```
 
 
 Clustering the query proteins at low identity prior to DIAMOND searches. Suitable if you have many similar query proteins and are looking for more general matches.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --mmseqs_minseqid 0.70 mmseqs_cover 0.60
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --mmseqs_minseqid 0.70 mmseqs_cover 0.60
 ```
 
 Customising the diamond search modes. Suitable if you want to run a less computationally-intensive search.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --diamond-forks 1 --diamond_mode sensitive
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --diamond-forks 1 --diamond_mode sensitive
 ```
 
 Returning longer candidate EVEs by merging more distant neigboring hits and returning longer flanking sequences. Suitable when searching for multiple protein integrations from one virus eg. proviruses.
 ```
-nextflow hi-fever.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --interval 3000 --flank 5000
+nextflow main.nf --query_file_aa viruses.fasta --ftp_file genomes.txt --outdir hi_fever_results --interval 3000 --flank 5000
 ```
 
 ## Interpreting results
