@@ -36,9 +36,8 @@ Ensure the required files are in the hi-fever/data folder:
 * `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz`: the minimal database built from the NCBI non-redundant database
 * `MINI_rvdbv28_wtaxa.dmnd.tar.xz`: the minimal database built from the RVDB database
 
-Unzip the reciprocal databases and taxonomy file with the following tar commands:
+Unzip the reciprocal databases with the following tar commands:
 ```
-tar -xf taxdump.tar.gz
 tar -xf MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz
 tar -xf MINI_rvdbv28_wtaxa.dmnd.tar.xz
 ```
@@ -52,9 +51,7 @@ Run the HI-FEVER workflow from the root hi-fever folder with the following comma
 This will generate a folder called `output` with two subfolders: `accessory_fastas` and `sql`. These outputs are detailed on our [Usage page](https://github.com/PaleovirologyLab/hi-fever/wiki/Usage). For a guide on how to interpret these results, see our [Interpreting results page](https://github.com/PaleovirologyLab/hi-fever/wiki/Interpreting-results)
 
 ## Acknowledgements
-Here we should inclide the libraries, the programs that we use, and the citation to the paper:
-
-hi-fever is based on the following libraries and programs directory along with their license:
+HI-FEVER is based on the following libraries and programs directory along with their license:
 - Biopython (https://biopython.org/)
 - Seqtk (https://github.com/lh3/seqtk)
 - DIAMOND (https://github.com/bbuchfink/diamond)
@@ -69,4 +66,4 @@ hi-fever is based on the following libraries and programs directory along with t
 - Bedtools (https://bedtools.readthedocs.io/en/latest/index.html)
 
 ### Citation
-Cite our work at: Please cite (paper) when using HI-FEVER in your projects.
+Please cite (paper) when using HI-FEVER in your projects.
