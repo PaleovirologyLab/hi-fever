@@ -1,117 +1,169 @@
-// Workflow specific parameters
+// Parse inputs
+include { parse_ftp } from '../modules/process_host_info.nf'
+include { check_file_type as check_query_type } from '../modules/utils.nf'
+include { check_file_type as check_reciprocal_type} from '../modules/utils.nf'
+include { cluster_seqs } from '../modules/cluster_seqs.nf'
 
-params.diamond_forks = "4"
+// Process host genomes and get their taxonomical information
+include { download_assemblies } from '../modules/process_host_info.nf'
+include { download_extract_host_metadata; get_metadata} from '../modules/process_host_info.nf'
+include { assembly_stats } from '../modules/process_host_info.nf'
+include { fetch_host_taxonomy } from '../modules/process_host_info.nf'
+include { build_host_taxonomy_table } from '../modules/process_host_info.nf'
 
-// Check for outdir & input files
+// DIAMOND-related process
+include { build_diamond_db as build_query} from '../modules/diamond.nf'
+include { build_diamond_db as build_reciprocal} from '../modules/diamond.nf'
+include { forward_diamond } from '../modules/diamond.nf'
+include { single_reciprocal_diamond; full_reciprocal_diamond } from '../modules/diamond.nf'
+include { find_best_diamond_hits } from '../modules/diamond.nf'
 
-if (file("$params.outdir").exists()) {
-    error("Folder '$params.outdir' already exists. Remove or rename it before rerunning, or use --outdir to direct workflow outputs to an alternative directory.")
-}
+// Concatenate and extract best hits after forward DIAMOND
+include { extract_seqs_annotate_matches } from '../modules/intersect_domains_merge_extract.nf'
+include { merge_seqs_loci} from '../modules/merge_seqs_loci.nf'
 
-if (!file("$params.query_file_aa").exists()) {
-    error("Input file '$params.query_file_aa' was not found. Either add it to the data directory, or specify another query file using --query_file_aa")
-}
-
-if (!file("$params.ftp_file").exists()) {
-    error("Input file '$params.ftp_file' was not found. Either add it to the data directory, or specify another assembly list using --ftp_file")
-}
-
-if (!file("$params.reciprocal_nr_db").exists()) {
-    error("Input file '$params.reciprocal_nr_db' was not found. Either add it to the data directory, or specify another reciprocal nr database using --reciprocal_nr_db")
-}
-
-if (!file("$params.reciprocal_rvdb_db").exists()) {
-    error("Input file '$params.reciprocal_rvdb_db' was not found. Either add it to the data directory, or specify another reciprocal RVDB database using --reciprocal_rvdb_db")
-}
-
-if (!file("$params.phmms").exists()) {
-    error("Input file '$params.phmms' was not found. Either add it to the data directory, or specify another phmm database using --phmms")
-}
-
-// Import modules
-
-include { build_db } from '../modules/build_db.nf'
-include { hmmer } from '../modules/hmmer.nf'
-include { parse_ftp } from '../modules/parse_ftp.nf'
-include { download_assemblies } from '../modules/download_assemblies.nf'
-include { get_assembly_metadata } from '../modules/get_assembly_metadata.nf'
-include { assembly_stats } from '../modules/assembly_stats.nf'
-include { diamond } from '../modules/diamond.nf'
-include { intersect_domains_merge_extract } from '../modules/intersect_domains_merge_extract.nf'
-include { orf_extract } from '../modules/orf_extract.nf'
-include { reciprocal_diamond } from '../modules/reciprocal_diamond.nf'
+// Build ancestral protein
 include { genewise } from '../modules/genewise.nf'
-include { build_taxonomy_table } from '../modules/build_taxonomy_table.nf'
-include { publish } from '../modules/publish.nf'
+
+// Extract orfs from forward DIAMOND
+include { orf_extract } from '../modules/orf_extract.nf'
+
+// Getting hits taxonomy tables
+include { build_hits_taxonomy_table } from '../modules/hits_taxonomy.nf'
+include { fetch_hits_taxonomy_from_accns } from '../modules/hits_taxonomy.nf'
+
+// Publish concatenated tables with results of all hosts
+include { concatenate_publish_tables as publish_predicted_orfs} from '../modules/utils.nf'
+include { concatenate_publish_tables as publish_forward_diamond} from '../modules/utils.nf'
+include { concatenate_publish_tables as publish_assembly_map} from '../modules/utils.nf'
 
 // Run local workflow
 
 workflow HIFEVER {
 
     // Define channels
-    def query_ch = Channel.fromPath(params.query_file_aa)
-    def profiles_ch = Channel.fromPath(params.phmms, type: 'dir')
-    def ftp_ch = Channel.fromPath(params.ftp_file)
-    def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db)
-    def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db)
+    def query_ch = Channel.fromPath(params.query_file_aa, checkIfExists: true)
+    def ftp_ch = Channel.fromPath(params.ftp_file, checkIfExists: true)
 
-    // Build clustered DIAMOND query database from user supplied protein FASTA
-    build_db(query_ch)
-    clustered_proteins_val = build_db.out.clust_ch.collect()
+    // If params.cluster_query, cluster sequences
+    query_proteins = (params.cluster_query ? cluster_seqs(query_ch) : query_ch) 
 
-    // HMMER run on clustered queries
-    hmmer(profiles_ch, clustered_proteins_val)
-
-    // Unpack user supplied ftp list and begin downloading assemblies
+    // Build DIAMOND database with queries if fasta file
+    query_type = query_ch | check_query_type
+    vir_db_ch = (params.query_db ? query_db: build_query("query", query_proteins))
+    
+    // Unpack ftp list, download assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
-
-    // Get assembly metadata
-    get_assembly_metadata()
-
+   
     // Get stats about downloaded assembly files
-    assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+    assembly_stats = assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', 
+                                                        newLine: false, 
+                                                        storeDir: "${params.outdir}/sql")
 
-    // Run main EVE search, annotate potential domains, and extract FASTAs
-    diamond_out = diamond(fetched_assembly_files.combine(build_db.out.vir_db_ch))
-    intersect_domains_merge_extract(diamond_out.combine(hmmer.out.query_domains_ch))
-    strict_fastas_collected = intersect_domains_merge_extract.out.strict_fa_ch.collect()
-    context_fastas_collected = intersect_domains_merge_extract.out.context_fa_ch.collect()
-    locus_assembly_map_collected = intersect_domains_merge_extract.out.locus_assembly_map_ch.collect()
-    annotated_hits_collected = intersect_domains_merge_extract.out.annot_tsv_ch.collect()
+    if (!params.get_all_metadata) {
+        // Download metadata only for genomes on ftp file
+        metadata_channel = get_metadata(assembly_stats)
+        fetch_host_taxonomy(metadata_channel.assembly_metadata)        
 
-    // Extract ORFs that overlap DIAMOND hits (extending into flanks)
-    orfs_collected = orf_extract(intersect_domains_merge_extract.out.context_fa_ch, \
-                intersect_domains_merge_extract.out.strict_coords_ch).collect()
+    }  
+    else {
+        // Download assembly metadata for all eukaryots
+        download_extract_host_metadata()
+        def ncbi_tax_table = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
+        build_host_taxonomy_table( ftp_ch, 
+                                   download_extract_host_metadata.out.assembly_metadata_ch, 
+                                   ncbi_tax_table)
 
-    // Reciprocal DIAMOND & and prepare for genewise
-    reciprocal_diamond(strict_fastas_collected,
-                    context_fastas_collected,
-                    reciprocal_nr_db_ch,
-                    reciprocal_rvdb_db_ch,
-                    annotated_hits_collected,
-                    clustered_proteins_val)
+    }
 
-    pair_subsets = reciprocal_diamond.out.pairs_ch.splitText(by: params.pairs_per_task, file: true)
-    best_hit_proteins_val = reciprocal_diamond.out.best_hits_fa_ch.collect()
-    strict_fastas_val = reciprocal_diamond.out.merged_fa_ch.collect()
-    context_fastas_val = reciprocal_diamond.out.context_fa_ch.collect()
-    context_coords_val = reciprocal_diamond.out.context_coords_ch.collect()
+    // Run a DIAMOND using chunks of the genome as query against and viral sequences as database
+    forward_diamond_out = forward_diamond(fetched_assembly_files.combine(vir_db_ch))
+    
+    // Extract genome locus with hits, and their flanking regions
+    extract_seqs_outputs = extract_seqs_annotate_matches(forward_diamond_out)
 
-    // Frameshift and STOP aware reconstruction of EVE sequences
-    genewise(pair_subsets,
+    // Inputs for reciprocal DIAMOND:
+    forward_matches = extract_seqs_outputs.forward_matches.collect()
+    strict_fastas_collected = extract_seqs_outputs.strict_fa_ch.collect()
+    context_fastas_collected = extract_seqs_outputs.context_fa_ch.collect()
+    
+    // Concatenate sequences into single file
+    merge_seqs_loci(strict_fastas_collected, context_fastas_collected)
+    loci_merged_fa = merge_seqs_loci.out.loci_merged_fa.collect()
+    loci_merged_context_gz = merge_seqs_loci.out.loci_merged_context_gz.collect()
+    all_context_coords_bed = merge_seqs_loci.out.all_context_coords_bed.collect()
+
+    // Run reciprocal DIAMOND
+    if (params.custom_reciprocal) {
+        
+        def reciprocal_ch = Channel.fromPath(params.custom_reciprocal_db, checkIfExists: true)
+        reciprocal_type = reciprocal_ch | check_reciprocal_type
+
+        // Create reciprocal database if input is in fasta, else use reciprocal_db
+        reciprocal_db = (reciprocal_type == 'fasta' ? 
+                            build_reciprocal("reciprocal", reciprocal_ch): reciprocal_ch)
+        
+        // run reciprocal DIAMOND and publish results
+        single_reciprocal_diamond(reciprocal_db, loci_merged_fa)    
+        reciprocal_matches = single_reciprocal_diamond.out.reciprocal_matches.collect()
+        reciprocal_seqs = single_reciprocal_diamond.out.reciprocal_seqs.collect()
+        reciprocal_hits = single_reciprocal_diamond.out.reciprocal_hits.collect()
+
+        // Find best hits    
+        find_best_diamond_hits(forward_matches, 
+                        query_proteins, reciprocal_matches, 
+                        reciprocal_seqs, reciprocal_hits)
+
+        best_pairs_subsets = find_best_diamond_hits.out.best_pairs_txt.splitText(
+                                                            by: params.pairs_per_task, 
+                                                            file: true)
+
+        best_hit_proteins_val = find_best_diamond_hits.out.best_hits_fa_ch.collect()
+        all_diamond_hits = find_best_diamond_hits.out.forward_plus_reciprocal_dmnd_hits.collect()
+        
+        // Make taxonomy and publish table for proteins
+        hits_taxonomy = fetch_hits_taxonomy_from_accns(all_diamond_hits)
+    }
+    else {
+        // Reciprocal DIAMOND with rvdb and nr protein databases
+        def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db, checkIfExists: true)
+        def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db, checkIfExists: true)
+        
+        full_reciprocal_diamond(reciprocal_nr_db_ch, reciprocal_rvdb_db_ch,
+                                loci_merged_fa, forward_matches,
+                                query_proteins)
+        best_pairs_subsets = full_reciprocal_diamond.out.best_pairs_txt.splitText(
+                                                            by: params.pairs_per_task, 
+                                                            file: true)
+        best_hit_proteins_val = full_reciprocal_diamond.out.best_hits_fa_ch.collect()
+        all_diamond_hits = full_reciprocal_diamond.out.mixed_hits.collect()
+
+        // Read taxonomy table to build hits taxonomy
+        def ncbi_tax_table_hits = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
+        
+        // Build hits taxonomy from annotated diamond database
+        hits_taxonomy = build_hits_taxonomy_table( full_reciprocal_diamond.out.reciprocal_nr_matches_ch, 
+                                                   full_reciprocal_diamond.out.reciprocal_rvdb_matches_ch, 
+                                                   ncbi_tax_table_hits)
+        
+    }
+    
+    // Reconstruction of encoded proteins. Returns number of STOP codons, frameshifts and indels
+    genewise(best_pairs_subsets,
             best_hit_proteins_val,
-            strict_fastas_val,
-            context_fastas_val,
-            context_coords_val).collectFile(name: 'genewise.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+            loci_merged_fa,
+            loci_merged_context_gz,
+            all_context_coords_bed).collectFile(name: 'genewise.tsv', 
+                                            newLine: false, 
+                                            storeDir: "${params.outdir}/sql")
 
-    // Produce taxonomy table for reciprocal searches and host assemblies
-    build_taxonomy_table(ftp_ch,
-            get_assembly_metadata.out.assembly_metadata_ch,
-            reciprocal_diamond.out.reciprocal_nr_matches_ch,
-            reciprocal_diamond.out.reciprocal_rvdb_matches_ch)
+    // Publish files
+    cat_forward = publish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
+    predicted_orfs = orf_extract(extract_seqs_outputs.context_fa_ch, 
+                                 extract_seqs_outputs.strict_coords_ch)
 
-    // Produce final outputs
-    publish(locus_assembly_map_collected, \
-            orfs_collected)
+    cat_orfs = publish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
+    locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
+    cat_assembly_map = publish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
 
 }
