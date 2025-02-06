@@ -49,11 +49,11 @@ workflow HIFEVER {
     def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
 
     // If params.cluster_query, cluster sequences
-    query_proteins = (params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch) 
+    query_proteins = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
 
     // Build DIAMOND database with queries if fasta file
     query_type = query_ch | CHECK_QUERY_TYPE
-    vir_db_ch = (params.query_db ? query_db : BUILD_QUERY("query", query_proteins))
+    vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_proteins)
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
@@ -67,22 +67,22 @@ workflow HIFEVER {
 							}
 
     // Get stats about downloaded assembly files
-    assembly_stats = ASSEMBLY_STATS(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', 
-                                                        newLine: false, 
+    assembly_stats = ASSEMBLY_STATS(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv',
+                                                        newLine: false,
                                                         storeDir: "${params.outdir}/sql")
 
     if (!params.get_all_metadata) {
         // Download metadata only for genomes on ftp file
         metadata_channel = GET_METADATA(assembly_stats)
-        FETCH_HOST_TAXONOMY(metadata_channel.assembly_metadata)        
+        FETCH_HOST_TAXONOMY(metadata_channel.assembly_metadata)
 
     }  
     else {
         // Download assembly metadata for all eukaryots
         DOWNLOAD_EXTRACT_HOST_METADATA()
         def ncbi_tax_table = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
-        build_host_taxonomy_table( ftp_ch, 
-                                   download_extract_host_metadata.out.assembly_metadata_ch, 
+        build_host_taxonomy_table( ftp_ch,
+                                   download_extract_host_metadata.out.assembly_metadata_ch,
                                    ncbi_tax_table)
 
     }
@@ -128,12 +128,12 @@ workflow HIFEVER {
         reciprocal_hits = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_hits.collect()
 
         // Find best hits    
-        FIND_BEST_DIAMOND_HITS(forward_matches, 
-                        query_proteins, reciprocal_matches, 
+        FIND_BEST_DIAMOND_HITS(forward_matches,
+                        query_proteins, reciprocal_matches,
                         reciprocal_seqs, reciprocal_hits)
 
         best_pairs_subsets = FIND_BEST_DIAMOND_HITS.out.best_pairs_txt.splitText(
-                                                            by: params.pairs_per_task, 
+                                                            by: params.pairs_per_task,
                                                             file: true)
 
         best_hit_proteins_val = FIND_BEST_DIAMOND_HITS.out.best_hits_fa_ch.collect()
@@ -151,7 +151,7 @@ workflow HIFEVER {
                                 loci_merged_fa, forward_matches,
                                 query_proteins)
         best_pairs_subsets = FULL_RECIPROCAL_DIAMOND.out.best_pairs_txt.splitText(
-                                                            by: params.pairs_per_task, 
+                                                            by: params.pairs_per_task,
                                                             file: true)
         best_hit_proteins_val = FULL_RECIPROCAL_DIAMOND.out.best_hits_fa_ch.collect()
         all_diamond_hits = FULL_RECIPROCAL_DIAMOND.out.mixed_hits.collect()
@@ -160,8 +160,8 @@ workflow HIFEVER {
         def ncbi_tax_table_hits = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
         
         // Build hits taxonomy from annotated diamond database
-        hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE( FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch, 
-                                                   FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch, 
+        hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE( FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
+                                                   FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
                                                    ncbi_tax_table_hits)
         
     }
@@ -171,19 +171,17 @@ workflow HIFEVER {
             best_hit_proteins_val,
             loci_merged_fa,
             loci_merged_context_gz,
-            all_context_coords_bed).collectFile(name: 'genewise.tsv', 
-                                            newLine: false, 
+            all_context_coords_bed).collectFile(name: 'genewise.tsv',
+                                            newLine: false,
                                             storeDir: "${params.outdir}/sql")
 
     // Publish files
     cat_forward = PUBLISH_FORWARD_DIAMOND(forward_matches, "forward-matches.dmnd.annot.tsv")
-    predicted_orfs = ORF_EXTRACT(extract_seqs_outputs.context_fa_ch, 
+    predicted_orfs = ORF_EXTRACT(extract_seqs_outputs.context_fa_ch,
                                  extract_seqs_outputs.strict_coords_ch)
 
     cat_orfs = PUBLISH_PREDICTED_ORFS(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
     locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
     cat_assembly_map = PUBLISH_ASSEMBLY_MAP(locus_assembly_maps, "locus_assembly_map.tsv")
-
-
 
 }
