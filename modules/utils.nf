@@ -12,6 +12,8 @@ process CHECK_FILE_TYPE {
         type = 'fasta'
     } else if (extension == 'fa') {
         type = 'fasta'
+    } else if (extension == 'fna') {
+        type = 'fasta'
     } else if (extension == 'dmnd') {
         type = 'dmnd'
     } else {
