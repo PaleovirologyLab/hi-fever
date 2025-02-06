@@ -1,1 +1,7 @@
-rm -rf work/ .nextflow* report.html logs output
+shopt -s extglob
+
+rm -rf .nextflow.log* report.html logs output/
+
+cd work
+
+rm -rf !(apptainer)
