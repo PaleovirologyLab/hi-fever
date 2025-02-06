@@ -53,7 +53,7 @@ workflow HIFEVER {
 
     // Build DIAMOND database with queries if fasta file
     query_type = query_ch | CHECK_QUERY_TYPE
-    vir_db_ch = (params.query_db ? query_db: BUILD_QUERY("query", query_proteins))
+    vir_db_ch = (params.query_db ? query_db : BUILD_QUERY("query", query_proteins))
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
@@ -97,7 +97,7 @@ workflow HIFEVER {
 	rejoinDb = forward_diamond_out.join(BLASTDB.out, by: [0]) // Joins on shared metadata (assembly)
 
 
-  // Extract genome locus with hits, and their flanking regions
+    // Extract genome locus with hits, and their flanking regions
     extract_seqs_outputs = EXTRACT_SEQS_ANNOTATE_MATCHES(rejoinDb)
 
     // Inputs for reciprocal DIAMOND:
@@ -114,7 +114,7 @@ workflow HIFEVER {
     // Run reciprocal DIAMOND
     if (params.custom_reciprocal) {
         
-        def reciprocal_ch = Channel.fromPath(params.custom_reciprocal_db, checkIfExists: true)
+        def reciprocal_ch = Channel.fromPath("${params.data_path}/${params.custom_reciprocal_db}", checkIfExists: true)
         reciprocal_type = reciprocal_ch | CHECK_RECIPROCAL_TYPE
 
         // Create reciprocal database if input is in fasta, else use reciprocal_db
@@ -122,10 +122,10 @@ workflow HIFEVER {
                             build_reciprocal("reciprocal", reciprocal_ch): reciprocal_ch)
         
         // run reciprocal DIAMOND and publish results
-        single_reciprocal_diamond(reciprocal_db, loci_merged_fa)    
-        reciprocal_matches = single_reciprocal_diamond.out.reciprocal_matches.collect()
-        reciprocal_seqs = single_reciprocal_diamond.out.reciprocal_seqs.collect()
-        reciprocal_hits = single_reciprocal_diamond.out.reciprocal_hits.collect()
+        SINGLE_RECIPROCAL_DIAMOND(reciprocal_db, loci_merged_fa)
+        reciprocal_matches = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_matches.collect()
+        reciprocal_seqs = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_seqs.collect()
+        reciprocal_hits = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_hits.collect()
 
         // Find best hits    
         FIND_BEST_DIAMOND_HITS(forward_matches, 
@@ -144,8 +144,8 @@ workflow HIFEVER {
     }
     else {
         // Reciprocal DIAMOND with rvdb and nr protein databases
-        def reciprocal_nr_db_ch = Channel.fromPath(params.reciprocal_nr_db, checkIfExists: true)
-        def reciprocal_rvdb_db_ch = Channel.fromPath(params.reciprocal_rvdb_db, checkIfExists: true)
+        def reciprocal_nr_db_ch = Channel.fromPath("${params.data_path}/${params.reciprocal_nr_db}", checkIfExists: true)
+        def reciprocal_rvdb_db_ch = Channel.fromPath("${params.data_path}/${params.reciprocal_rvdb_db}", checkIfExists: true)
         
         FULL_RECIPROCAL_DIAMOND(reciprocal_nr_db_ch, reciprocal_rvdb_db_ch,
                                 loci_merged_fa, forward_matches,
@@ -157,7 +157,7 @@ workflow HIFEVER {
         all_diamond_hits = FULL_RECIPROCAL_DIAMOND.out.mixed_hits.collect()
 
         // Read taxonomy table to build hits taxonomy
-        def ncbi_tax_table_hits = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
+        def ncbi_tax_table_hits = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
         
         // Build hits taxonomy from annotated diamond database
         hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE( FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch, 
