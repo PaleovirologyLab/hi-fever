@@ -5,7 +5,7 @@ process orf_extract {
     path strict_coords
 
     output:
-    path "*_intersected_ORFs.txt", emit: orfs
+    path "*_intersected_ORFs.txt", optional: true, emit: orfs
     // publishDir "${params.outdir}", mode: "copy", pattern: "*intersected_ORFs.txt"
 
     """

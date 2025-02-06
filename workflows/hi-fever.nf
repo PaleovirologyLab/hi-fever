@@ -10,6 +10,7 @@ include { download_extract_host_metadata; get_metadata} from '../modules/process
 include { assembly_stats } from '../modules/process_host_info.nf'
 include { fetch_host_taxonomy } from '../modules/process_host_info.nf'
 include { build_host_taxonomy_table } from '../modules/process_host_info.nf'
+include { blastdb } from '../modules/process_host_info.nf'
 
 // DIAMOND-related process
 include { build_diamond_db as build_query} from '../modules/diamond.nf'
@@ -42,8 +43,8 @@ include { concatenate_publish_tables as publish_assembly_map} from '../modules/u
 workflow HIFEVER {
 
     // Define channels
-    def query_ch = Channel.fromPath(params.query_file_aa, checkIfExists: true)
-    def ftp_ch = Channel.fromPath(params.ftp_file, checkIfExists: true)
+    def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
+    def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
 
     // If params.cluster_query, cluster sequences
     query_proteins = (params.cluster_query ? cluster_seqs(query_ch) : query_ch) 
@@ -54,7 +55,15 @@ workflow HIFEVER {
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = parse_ftp(ftp_ch) | flatten | download_assemblies
-   
+
+	// Add assembly metadata
+	assembly_with_metadata = fetched_assembly_files.map { assembly ->
+									def meta = [
+									id: assembly.baseName
+									]
+									return [meta, assembly]
+							}
+
     // Get stats about downloaded assembly files
     assembly_stats = assembly_stats(fetched_assembly_files).collectFile(name: 'assembly_stats.tsv', 
                                                         newLine: false, 
@@ -77,10 +86,17 @@ workflow HIFEVER {
     }
 
     // Run a DIAMOND using chunks of the genome as query against and viral sequences as database
-    forward_diamond_out = forward_diamond(fetched_assembly_files.combine(vir_db_ch))
-    
-    // Extract genome locus with hits, and their flanking regions
-    extract_seqs_outputs = extract_seqs_annotate_matches(forward_diamond_out)
+    forward_diamond_out = forward_diamond(assembly_with_metadata.combine(vir_db_ch))
+
+	// Make BLAST db for assembly
+	blastdb(assembly_with_metadata)
+
+	// Rejoin dmnd.nsq with nsq db
+	rejoinDb = forward_diamond_out.join(blastdb.out, by: [0]) // Joins on shared metadata (assembly)
+
+
+  // Extract genome locus with hits, and their flanking regions
+    extract_seqs_outputs = extract_seqs_annotate_matches(rejoinDb)
 
     // Inputs for reciprocal DIAMOND:
     forward_matches = extract_seqs_outputs.forward_matches.collect()
@@ -165,5 +181,7 @@ workflow HIFEVER {
     cat_orfs = publish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
     locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
     cat_assembly_map = publish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
+
+
 
 }

@@ -7,7 +7,7 @@ process build_hits_taxonomy_table {
 
     output:
     path "hits_taxonomy.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "hits_taxonomy.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "hits_taxonomy.tsv"
 
     """
     # Collect taxids from reciprocal diamond searches
