@@ -49,11 +49,11 @@ workflow HIFEVER {
     def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
 
     // If params.cluster_query, cluster sequences
-    query_proteins = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
+    query_ch = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
 
     // Build DIAMOND database with queries if fasta file
     query_type = query_ch | CHECK_QUERY_TYPE
-    vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_proteins)
+    vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_ch)
     
     // Unpack ftp list, download assemblies
     fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
@@ -129,7 +129,7 @@ workflow HIFEVER {
 
         // Find best hits    
         FIND_BEST_DIAMOND_HITS(forward_matches,
-                        query_proteins, reciprocal_matches,
+                        query_ch, reciprocal_matches,
                         reciprocal_seqs, reciprocal_hits)
 
         best_pairs_subsets = FIND_BEST_DIAMOND_HITS.out.best_pairs_txt.splitText(
@@ -149,7 +149,7 @@ workflow HIFEVER {
         
         FULL_RECIPROCAL_DIAMOND(reciprocal_nr_db_ch, reciprocal_rvdb_db_ch,
                                 loci_merged_fa, forward_matches,
-                                query_proteins)
+                                query_ch)
         best_pairs_subsets = FULL_RECIPROCAL_DIAMOND.out.best_pairs_txt.splitText(
                                                             by: params.pairs_per_task,
                                                             file: true)

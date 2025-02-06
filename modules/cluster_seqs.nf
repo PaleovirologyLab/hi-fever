@@ -4,7 +4,7 @@ process CLUSTER_SEQS {
     path queries
 
     output:
-    path "query_db_clu_rep.fasta", emit: clust_ch
+    path "query_db_clu_rep.fasta"
     publishDir "${params.outdir}", mode: "copy"
 
     """
