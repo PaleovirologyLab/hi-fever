@@ -66,4 +66,6 @@ HI-FEVER is based on the following libraries and programs directory along with t
 - Bedtools (https://bedtools.readthedocs.io/en/latest/index.html)
 
 ### Citation
-Please cite (paper) when using HI-FEVER in your projects.
+Please include the following citation when using HI-FEVER in your projects.
+
+Baena-Munoz, L., Harding, E.F., Barreat, J.G.N., Kinsella, C.M. \& Katzourakis, A. HI-FEVER GitHub and data repository. DOI: [https://doi.org/10.17605/OSF.IO/Y357R](https://doi.org/10.17605/OSF.IO/Y357R)
