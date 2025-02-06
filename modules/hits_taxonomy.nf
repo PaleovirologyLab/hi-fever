@@ -1,4 +1,4 @@
-process build_hits_taxonomy_table {
+process BUILD_HITS_TAXONOMY_TABLE {
 
     input:
     path reciprocal_nr_matches
@@ -36,7 +36,7 @@ process build_hits_taxonomy_table {
 
 }
  
-process fetch_hits_taxonomy_from_accns {
+process FETCH_HITS_TAXONOMY_FROM_ACCNS {
 
     input: 
     path all_diamond_hits

@@ -1,4 +1,4 @@
-process cluster_seqs {
+process CLUSTER_SEQS {
 
     input:
     path queries

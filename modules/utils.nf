@@ -1,4 +1,4 @@
-process check_file_type {
+process CHECK_FILE_TYPE {
     input:
     path inputFile // Input file
 
@@ -23,7 +23,7 @@ process check_file_type {
     """
 }
 
-process concatenate_publish_tables {
+process CONCATENATE_PUBLISH_TABLES {
     input:
     path collected_files
     val table_name  // Receive the table name as a string

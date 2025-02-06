@@ -1,4 +1,4 @@
-process orf_extract {
+process ORF_EXTRACT {
 
     input:
     path context_fasta

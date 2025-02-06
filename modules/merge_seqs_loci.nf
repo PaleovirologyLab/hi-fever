@@ -1,4 +1,4 @@
-process merge_seqs_loci {
+process MERGE_SEQS_LOCI {
 
     input:
     path strict_fastas_collected

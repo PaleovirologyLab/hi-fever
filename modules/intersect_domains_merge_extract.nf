@@ -1,4 +1,4 @@
-process extract_seqs_annotate_matches {
+process EXTRACT_SEQS_ANNOTATE_MATCHES {
 
 	tag "${meta.id}"
 

@@ -1,4 +1,4 @@
-process genewise {
+process GENEWISE {
 
     input:
     path pair_subsets

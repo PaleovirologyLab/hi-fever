@@ -1,4 +1,4 @@
-process download_extract_host_metadata {
+process DOWNLOAD_EXTRACT_HOST_METADATA {
 
     output:
     path "assembly_metadata.tsv", emit: assembly_metadata_ch
@@ -37,7 +37,7 @@ process download_extract_host_metadata {
 
 }
 
-process get_metadata {
+process GET_METADATA {
     
     input:
     path assembly_stats
@@ -53,7 +53,7 @@ process get_metadata {
 
 }
 
-process build_host_taxonomy_table {
+process BUILD_HOST_TAXONOMY_TABLE {
     
     input:
     path ftp_file
@@ -93,7 +93,7 @@ process build_host_taxonomy_table {
 
 }
 
-process fetch_host_taxonomy {
+process FETCH_HOST_TAXONOMY {
 
     input: 
     path assembly_metadata
@@ -109,7 +109,7 @@ process fetch_host_taxonomy {
 
 }
 
-process assembly_stats {
+process ASSEMBLY_STATS {
 
     input:
     path assembly
@@ -126,7 +126,7 @@ process assembly_stats {
     """
 
 }
-process download_assemblies {
+process DOWNLOAD_ASSEMBLIES {
 
         maxForks 10
 
@@ -173,7 +173,7 @@ process download_assemblies {
         """
 }
 
-process blastdb {
+process BLASTDB {
 
 	// Directives
 
@@ -194,7 +194,7 @@ process blastdb {
 
 }
 
-process parse_ftp {
+process PARSE_FTP {
 
     input:
     path ftp_input

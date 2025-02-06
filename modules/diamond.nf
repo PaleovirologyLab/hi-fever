@@ -1,4 +1,4 @@
-process build_diamond_db {
+process BUILD_DIAMOND_DB {
     input:
     val label // label for output
     path sequences //input file
@@ -14,7 +14,7 @@ process build_diamond_db {
 
 }
 
-process forward_diamond {
+process FORWARD_DIAMOND {
 
     maxForks params.diamond_forks
 	tag "${meta.id}"
@@ -53,7 +53,7 @@ process forward_diamond {
 
 }
 
-process single_reciprocal_diamond {
+process SINGLE_RECIPROCAL_DIAMOND {
 
     input:
     path reciprocal_db
@@ -92,7 +92,7 @@ process single_reciprocal_diamond {
 
 }
 
-process find_best_diamond_hits {
+process FIND_BEST_DIAMOND_HITS {
 
     input:
     path forward_matches
@@ -150,7 +150,7 @@ process find_best_diamond_hits {
 }
 
 
-process full_reciprocal_diamond {
+process FULL_RECIPROCAL_DIAMOND {
 
     input:
     path reciprocal_nr_db
