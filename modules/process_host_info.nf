@@ -173,6 +173,27 @@ process download_assemblies {
         """
 }
 
+process blastdb {
+
+	// Directives
+
+	debug false
+	tag "${meta.id}"
+
+	input:
+	tuple val(meta), path(assembly)
+
+	output:
+	tuple val(meta), path("*.gz*nsq")
+
+	"""
+
+    gunzip -c ${assembly} | makeblastdb -in - -out ${assembly} -title ${assembly} -dbtype nucl -parse_seqids
+
+	"""
+
+}
+
 process parse_ftp {
 
     input:

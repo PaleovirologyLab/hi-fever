@@ -1,7 +1,9 @@
 process extract_seqs_annotate_matches {
 
+	tag "${meta.id}"
+
     input:
-    tuple path(diamond_tsv), path(assembly_nsq_db)
+    tuple val(meta), path(diamond_tsv), path(assembly_nsq_db)
 
     output:
     path "*_forward_matches.dmnd.annot.tsv", emit: forward_matches
@@ -18,7 +20,7 @@ process extract_seqs_annotate_matches {
     """
     # Prepare variables
 
-    dbpath=\$(readlink -f \$(echo $assembly_nsq_db | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
+    dbpath=\$(readlink -f \$(echo ${assembly_nsq_db} | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
     filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
     assemblyID=\$(echo \$filename | sed 's/_genomic.*//')
 
@@ -63,7 +65,7 @@ process extract_seqs_annotate_matches {
     "\${assemblyID}_locus_assembly_map.tsv"
 
     # Clean up database files
-    rm \$dbpath*
+    # rm \$dbpath*
 
     """
 
