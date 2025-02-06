@@ -16,17 +16,15 @@ Maintainers:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-// Syntax version
-
-nextflow.enable.dsl=2
-
 // Import workflow scripts
 
+include { VERIFY } from './subworkflows/verify.nf'
 include { HIFEVER } from './workflows/hi-fever.nf'
 
 //  Workflow definition
 workflow {
 
+    VERIFY ()
     HIFEVER ()
 	
 }
