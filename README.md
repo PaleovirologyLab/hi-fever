@@ -31,7 +31,7 @@ To experiment with and explore HI-FEVER options we provide instructions on runni
 
 Ensure the required files are in the hi-fever/data folder:
 * `20_per_fam_no_retro.fasta` protein query file
-* `vertebrate_genomes_n5.txt` list of five vertebrate genome ftps
+* `human_T2T_ftp.txt` link to the human genome ftp
 * `taxdump.tar.gz` taxonomy map file
 * `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz`: the minimal database built from the NCBI non-redundant database
 * `MINI_rvdbv28_wtaxa.dmnd.tar.xz`: the minimal database built from the RVDB database
@@ -46,7 +46,7 @@ If using conda, activate the environment. If using Docker on Mac (arm64), open a
 
 Run the HI-FEVER workflow from the root hi-fever folder with the following command (replacing the email address):
 
-`nextflow main.nf --query_file_aa data/20_per_fam_no_retro.fasta --ftp_file data/vertebrate_genomes_n5.txt --email john.smith@email.com`
+`nextflow main.nf --query_file_aa data/20_per_fam_no_retro.fasta --ftp_file data/human_T2T_ftp.txt --email john.smith@email.com`
 
 This will generate a folder called `output` with two subfolders: `accessory_fastas` and `sql`. These outputs are detailed on our [Usage page](https://github.com/PaleovirologyLab/hi-fever/wiki/Usage). For a guide on how to interpret these results, see our [Interpreting results page](https://github.com/PaleovirologyLab/hi-fever/wiki/Interpreting-results)
 
