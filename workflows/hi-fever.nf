@@ -42,8 +42,8 @@ include { concatenate_publish_tables as publish_assembly_map} from '../modules/u
 workflow HIFEVER {
 
     // Define channels
-    def query_ch = Channel.fromPath(params.query_file_aa, checkIfExists: true)
-    def ftp_ch = Channel.fromPath(params.ftp_file, checkIfExists: true)
+    def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
+    def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
 
     // If params.cluster_query, cluster sequences
     query_proteins = (params.cluster_query ? cluster_seqs(query_ch) : query_ch) 
