@@ -4,4 +4,4 @@ rm -rf .nextflow.log* report.html logs output/
 
 cd work
 
-rm -rf !(apptainer)
+rm -rf !(apptainer|conda)
