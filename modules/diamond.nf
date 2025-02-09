@@ -1,4 +1,7 @@
 process BUILD_DIAMOND_DB {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
+
     input:
     val label // label for output
     path sequences //input file
@@ -18,6 +21,8 @@ process FORWARD_DIAMOND {
 
     maxForks params.diamond_forks
 	tag "${meta.id}"
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
 
     input:
     tuple val(meta), path(assembly), path(db)
@@ -54,6 +59,8 @@ process FORWARD_DIAMOND {
 }
 
 process SINGLE_RECIPROCAL_DIAMOND {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
 
     input:
     path reciprocal_db
@@ -93,6 +100,8 @@ process SINGLE_RECIPROCAL_DIAMOND {
 }
 
 process FIND_BEST_DIAMOND_HITS {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
 
     input:
     path forward_matches
@@ -151,6 +160,8 @@ process FIND_BEST_DIAMOND_HITS {
 
 
 process FULL_RECIPROCAL_DIAMOND {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
 
     input:
     path reciprocal_nr_db
