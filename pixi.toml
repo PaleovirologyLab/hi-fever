@@ -7,7 +7,8 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
-test = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com" }
+test = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile apptainer" }
+testConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile conda" }
 testGetMeta = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --get_all_metadata" }
 cluster = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd" }
 
