@@ -80,9 +80,9 @@ workflow HIFEVER {
     else {
         // Download assembly metadata for all eukaryots
         DOWNLOAD_EXTRACT_HOST_METADATA()
-        def ncbi_tax_table = Channel.fromPath(params.ncbi_taxonomy_table, checkIfExists: true)
-        build_host_taxonomy_table( ftp_ch,
-                                   download_extract_host_metadata.out.assembly_metadata_ch,
+        def ncbi_tax_table = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
+        BUILD_HOST_TAXONOMY_TABLE( ftp_ch,
+                                   DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch,
                                    ncbi_tax_table)
 
     }
