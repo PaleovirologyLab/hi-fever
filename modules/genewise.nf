@@ -1,5 +1,8 @@
 process GENEWISE {
 
+	container 'oras://community.wave.seqera.io/library/bedtools_seqtk_wise2:ee4ed6f614938f39'
+	conda 'bioconda::wise2=2.4.1 bioconda::bedtools=2.31.1 bioconda::seqtk=r93'
+
     input:
     path pair_subsets
     path best_hit_proteins
@@ -140,6 +143,7 @@ process GENEWISE {
     # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
 
     translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
+
     """
 
 }

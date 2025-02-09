@@ -17,13 +17,13 @@ process MERGE_SEQS_LOCI {
 
     # Concatenate loci extracted from strictly overlapping coordinates
 
-    cat $strict_fastas_collected > loci-merged-coordinates.fasta
+    cat ${strict_fastas_collected} > loci-merged-coordinates.fasta
 
     # Concatenate loci extracted from contextual coordinates
     # Simultaneously, generate accurate context coordinates in BED format 
     # for downstream genewise (since upstream awk operation can leave non-existent overhang on the right flank)
 
-    cat $context_fastas_collected | \
+    cat ${context_fastas_collected} | \
     tee >(grep ">" | sed 's/ .*//; s/>//; s/[:-]/\t/g' | sort -k1,1 -k2,2n > all_context_coords.bed) | \
     gzip > \
     loci-context-coordinates.fasta.gz

@@ -38,7 +38,10 @@ process DOWNLOAD_EXTRACT_HOST_METADATA {
 }
 
 process GET_METADATA {
-    
+
+	container 'oras://community.wave.seqera.io/library/biopython:1.85--a6f54362a38870a0'
+	conda 'conda-forge::biopython=1.85'
+
     input:
     path assembly_stats
 
@@ -47,14 +50,17 @@ process GET_METADATA {
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "assembly_metadata.tsv"
 
     """
-    get_assemblies_metadata.py $assembly_stats $params.email --outfile assembly_metadata.tsv
+    get_assemblies_metadata.py ${assembly_stats} ${params.email} --outfile assembly_metadata.tsv
     
     """
 
 }
 
 process BUILD_HOST_TAXONOMY_TABLE {
-    
+
+	container 'oras://community.wave.seqera.io/library/taxonkit:0.18.0--f6ca10e249e16f7d'
+	conda 'bioconda::taxonkit=0.18.0'
+
     input:
     path ftp_file
     path assembly_metadata
@@ -67,17 +73,17 @@ process BUILD_HOST_TAXONOMY_TABLE {
     """
 
     # Extract assembly accessions and remove version number
-    sed 's/^https.*\\///g' $ftp_file | sed 's/\\.[0-9]*_.*//g' | sed '/^\$/d' > assembly-ids.txt
+    sed 's/^https.*\\///g' ${ftp_file} | sed 's/\\.[0-9]*_.*//g' | sed '/^\$/d' > assembly-ids.txt
 
     # Grep assemblies being examined and extract species taxid (col. 8 / 7 + 1)    
-    grep -Ff assembly-ids.txt $assembly_metadata | awk -F'\\t' '{print \$8}' | sort | uniq > assembly-taxids.txt
+    grep -Ff assembly-ids.txt ${assembly_metadata} | awk -F'\\t' '{print \$8}' | sort | uniq > assembly-taxids.txt
 
     # Find unique taxids and remove N/As
     cat assembly-taxids.txt | sort | uniq > assembly_taxids-uniq.txt
     awk '{if(\$0!~"N/A") print}' assembly_taxids-uniq.txt > assembly_taxid-uniq-nonas.txt
 
     # Unpack taxonomy dump
-    tar -zxvf $ncbi_taxonomy_table
+    tar -zxvf ${ncbi_taxonomy_table}
 
     # Use taxonkit to obtain the lineage and print it in tabular format
     taxonkit lineage assembly_taxid-uniq-nonas.txt --data-dir . | \
@@ -95,6 +101,9 @@ process BUILD_HOST_TAXONOMY_TABLE {
 
 process FETCH_HOST_TAXONOMY {
 
+	container 'oras://community.wave.seqera.io/library/biopython_pandas:30b982b2baa37f61'
+	conda 'conda-forge::biopython=1.85 conda-forge::pandas=2.2.3'
+
     input: 
     path assembly_metadata
 
@@ -103,7 +112,8 @@ process FETCH_HOST_TAXONOMY {
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "host_tax_information.tsv"
 
     """
-    get_lineage_from_assembly_id.py $assembly_metadata $params.email --outfile host_tax_information.tsv
+
+    get_lineage_from_assembly_id.py ${assembly_metadata} ${params.email} --outfile host_tax_information.tsv
     
     """
 
@@ -119,7 +129,7 @@ process ASSEMBLY_STATS {
 
     """
 
-    stats.sh in=$assembly format=3 addname= | \
+    stats.sh in=${assembly} format=3 addname= | \
     grep -v n_scaffolds | \
     sed 's/\\/.*\\///g; s/_genomic.fna.gz//'
 
@@ -168,7 +178,7 @@ process DOWNLOAD_ASSEMBLIES {
 
                 md5check_function
 
-                done < $ftp_dir
+                done < ${ftp_dir}
 
         """
 }
@@ -178,6 +188,8 @@ process BLASTDB {
 	// Directives
 
 	debug false
+	container 'oras://community.wave.seqera.io/library/blast:2.16.0--ee6ae29ad5529d04'
+	conda 'bioconda::blast=2.16.0'
 	tag "${meta.id}"
 
 	input:

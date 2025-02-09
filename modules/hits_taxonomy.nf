@@ -1,5 +1,9 @@
 process BUILD_HITS_TAXONOMY_TABLE {
 
+	container 'oras://community.wave.seqera.io/library/taxonkit:0.18.0--f6ca10e249e16f7d'
+	conda 'bioconda::taxonkit=0.18.0'
+
+
     input:
     path reciprocal_nr_matches
     path reciprocal_rvdb_matches

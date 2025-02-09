@@ -1,6 +1,8 @@
 process EXTRACT_SEQS_ANNOTATE_MATCHES {
 
 	tag "${meta.id}"
+	container 'oras://community.wave.seqera.io/library/bedtools_blast:0e3281302be1f35f'
+	conda 'bioconda::bedtools=2.31.1 bioconda::blast=2.16.0'
 
     input:
     tuple val(meta), path(diamond_tsv), path(assembly_nsq_db)
@@ -38,7 +40,7 @@ process EXTRACT_SEQS_ANNOTATE_MATCHES {
 
 
     # Generate strict_coords
-    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' $diamond_tsv | \
+    awk 'BEGIN{OFS="\t"}; {if(\$2<\$3) print \$0; else if (\$3<\$2) print \$1, \$3, \$2, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15}' ${diamond_tsv} | \
     sort -k1,1 -k2,2n | \
     tee >(bedtools merge > "\${assemblyID}_strict_coords.bed") | \
     
@@ -56,8 +58,8 @@ process EXTRACT_SEQS_ANNOTATE_MATCHES {
     blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_strict.fasta"
 
     # Second coordinate range extraction (allow interval and add flanks)
-    bedtools merge -d $params.interval -i "\${assemblyID}_strict_coords.bed" | \
-    awk -v flank=$params.flank '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
+    bedtools merge -d ${params.interval} -i "\${assemblyID}_strict_coords.bed" | \
+    awk -v flank=${params.flank} '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
     blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_context.fasta"
 
     # Generate assemblyID to locus dictionary
