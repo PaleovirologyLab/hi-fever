@@ -121,6 +121,9 @@ process FETCH_HOST_TAXONOMY {
 
 process ASSEMBLY_STATS {
 
+	container 'oras://community.wave.seqera.io/library/bbmap:39.15--65f46923e9870921'
+	conda 'bioconda::bbmap=39.15'
+
     input:
     path assembly
 
