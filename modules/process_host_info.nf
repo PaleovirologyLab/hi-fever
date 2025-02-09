@@ -62,7 +62,7 @@ process BUILD_HOST_TAXONOMY_TABLE {
 
     output:
     path "host_taxonomy.tsv"
-    publishDir "${params.outdir}/sql", mode: "move", pattern: "host_taxonomy.tsv"
+    publishDir "${params.outdir}/sql", mode: "copy", pattern: "host_taxonomy.tsv"
 
     """
 
