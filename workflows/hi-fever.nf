@@ -1,6 +1,5 @@
 // Parse inputs
 include { PARSE_FTP } from '../modules/process_host_info.nf'
-include { CHECK_FILE_TYPE as CHECK_QUERY_TYPE } from '../modules/utils.nf'
 include { CHECK_FILE_TYPE as CHECK_RECIPROCAL_TYPE} from '../modules/utils.nf'
 include { CLUSTER_SEQS } from '../modules/cluster_seqs.nf'
 
@@ -44,17 +43,19 @@ include { CONCATENATE_PUBLISH_TABLES as PUBLISH_ASSEMBLY_MAP} from '../modules/u
 
 workflow HIFEVER {
 
-    // Define channels
-    def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
-    def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+	// Define channels
 
-    // If params.cluster_query, cluster sequences
-    query_ch = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
+		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
+		def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
 
-    // Build DIAMOND database with queries if fasta file
-    query_type = query_ch | CHECK_QUERY_TYPE
-    vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_ch)
-    
+	// If params.cluster_query, cluster sequences and reassign query_ch, else no change
+
+		def query_ch = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
+
+	// Build DIAMOND database from queries
+
+		def vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_ch)
+
     // Unpack ftp list, download assemblies
     fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
 
