@@ -1,6 +1,5 @@
 // Parse inputs
 include { PARSE_FTP } from '../modules/process_host_info.nf'
-include { CHECK_FILE_TYPE as CHECK_RECIPROCAL_TYPE} from '../modules/utils.nf'
 include { CLUSTER_SEQS } from '../modules/cluster_seqs.nf'
 
 // Process host genomes and get their taxonomical information
@@ -112,16 +111,36 @@ workflow HIFEVER {
     loci_merged_context_gz = MERGE_SEQS_LOCI.out.loci_merged_context_gz.collect()
     all_context_coords_bed = MERGE_SEQS_LOCI.out.all_context_coords_bed.collect()
 
-    // Run reciprocal DIAMOND
-    if (params.custom_reciprocal) {
-        
-        def reciprocal_ch = Channel.fromPath("${params.data_path}/${params.custom_reciprocal_db}", checkIfExists: true)
-        reciprocal_type = reciprocal_ch | CHECK_RECIPROCAL_TYPE
+	// Run reciprocal DIAMOND
 
-        // Create reciprocal database if input is in fasta, else use reciprocal_db
-        reciprocal_db = (reciprocal_type == 'fasta' ? 
-                            build_reciprocal("reciprocal", reciprocal_ch): reciprocal_ch)
-        
+		if (params.custom_reciprocal) {
+
+			def reciprocal_ch = Channel.fromPath("${params.data_path}/${params.custom_reciprocal_db}", checkIfExists: true)
+
+				// Run a file type check
+
+					def reciprocal_type_ch = reciprocal_ch.map { file ->
+						def extension = file.name.tokenize('.')[-1].toLowerCase()
+						def type = extension in ['fasta', 'fa', 'fna'] ? 'fasta' : (extension == 'dmnd' ? 'dmnd' : null)
+						if (type == null) {
+							error ("Unsupported file extension: ${extension}")
+						}
+						return tuple(file, type)
+					}
+
+				// Branch the input channel based on file type
+
+					reciprocal_type_ch.branch {
+						fasta: it[1] == 'fasta'
+						dmnd: it[1] == 'dmnd'
+					}.set { reciprocal_branched }
+
+				// Create reciprocal database if input fasta, else use provided dmnd db
+
+					reciprocal_db = reciprocal_branched.fasta.map { file, type ->
+						BUILD_RECIPROCAL("reciprocal", file)
+					}.mix(reciprocal_branched.dmnd.map { file, type -> file })
+
         // run reciprocal DIAMOND and publish results
         SINGLE_RECIPROCAL_DIAMOND(reciprocal_db, loci_merged_fa)
         reciprocal_matches = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_matches.collect()
@@ -143,6 +162,7 @@ workflow HIFEVER {
         // Make taxonomy and publish table for proteins
         hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_diamond_hits)
     }
+
     else {
         // Reciprocal DIAMOND with rvdb and nr protein databases
         def reciprocal_nr_db_ch = Channel.fromPath("${params.data_path}/${params.reciprocal_nr_db}", checkIfExists: true)
