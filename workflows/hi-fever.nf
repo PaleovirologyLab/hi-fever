@@ -60,8 +60,10 @@ workflow HIFEVER {
 
 	// Add assembly metadata
 	assembly_with_metadata = fetched_assembly_files.map { assembly ->
+									def fileName = assembly.baseName
+									def accession = fileName.split('_')[0..1].join('_')
 									def meta = [
-									id: assembly.baseName
+									id: accession
 									]
 									return [meta, assembly]
 							}
