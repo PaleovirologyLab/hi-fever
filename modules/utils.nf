@@ -35,6 +35,6 @@ process CONCATENATE_PUBLISH_TABLES {
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "${table_name}"
 
     """
-    cat $collected_files > '${table_name}'
+    cat ${collected_files} > '${table_name}'
     """
 }
