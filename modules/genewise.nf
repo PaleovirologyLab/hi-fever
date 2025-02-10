@@ -2,13 +2,6 @@ process GENEWISE {
 
 	container 'oras://community.wave.seqera.io/library/bedtools_seqtk_wise2:ee4ed6f614938f39'
 	conda 'bioconda::wise2=2.4.1 bioconda::bedtools=2.31.1 bioconda::seqtk=r93'
-	beforeScript {
-		if (workflow.profile == 'apptainer') {
-			'export WISECONFIGDIR="/opt/conda/share/wise2/wisecfg"'
-		} else {
-			'export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"'
-		}
-	}
 
     input:
     path pair_subsets
@@ -22,9 +15,15 @@ process GENEWISE {
 
     """
 
-    # General setup for genewise
+	# General setup for genewise
 
-    mkdir wise_tmp
+		if [ -n "\${APPTAINER_CONTAINER:-}" ]; then
+			export WISECONFIGDIR="/opt/conda/share/wise2/wisecfg"
+		else
+			export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
+		fi
+
+		mkdir wise_tmp
 
     # Prepare lists with sequences required per task, their pairing (loop input), original genomic coordinates, & BED of coords to intersect with context coords
 
