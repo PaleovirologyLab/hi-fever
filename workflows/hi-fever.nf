@@ -49,7 +49,7 @@ workflow HIFEVER {
 
 	// If params.cluster_query, cluster sequences and reassign query_ch, else no change
 
-		def query_ch = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
+		query_ch = params.cluster_query ? CLUSTER_SEQS(query_ch) : query_ch
 
 	// Build DIAMOND database from queries
 
