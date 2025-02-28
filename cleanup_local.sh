@@ -1,7 +1,10 @@
 shopt -s extglob
 
-rm -rf .nextflow.log* report.html logs output/
+rm -rf report.html logs output/
 
-cd work
-
-rm -rf !(apptainer|conda)
+if [ -d "work" ]; then
+	cd work
+	rm -rf  !(apptainer|conda)
+else
+  echo "Work directory does not exist."
+fi
