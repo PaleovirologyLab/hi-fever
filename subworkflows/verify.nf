@@ -31,7 +31,7 @@ workflow VERIFY {
 					error ("ERROR: File '${query_fasta}' does not have a '.fa', '.fna', or '.fasta' extension, please provide a FASTA file.")
 				}
 		} else {
-			error ("ERROR: Reference file not found at '${query_fasta}'. Please check you've set the parameters '--reference_path' and '--fasta' correctly.")
+			error ("ERROR: Reference file not found at '${query_fasta}'. Please check you've set the parameters '--data_path' and '--fasta' correctly.")
 		}
 
 }
