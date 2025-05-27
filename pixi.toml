@@ -4,7 +4,7 @@ channels = ["conda-forge", "bioconda"]
 description = "hi-fever pixi base and test tasks"
 name = "hi-fever"
 platforms = ["linux-64"]
-version = "0.1.0"
+version = "0.2.0"
 
 [tasks]
 test = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile apptainer" }
@@ -15,5 +15,5 @@ testGetMetaConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.
 testClusterConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd -profile conda" }
 
 [dependencies]
-nextflow="==23.04.1"
+nextflow="==24.10.5"
 apptainer="==1.3.6"
