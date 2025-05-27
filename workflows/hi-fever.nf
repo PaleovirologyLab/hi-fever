@@ -46,6 +46,7 @@ workflow HIFEVER {
 
 		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
 		def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+		def user_dmnd_db = Channel.fromPath("${params.data_path}/${params.user_dmnd_db}", checkIfExists: true)
 
 	// If params.cluster_query, cluster sequences and reassign query_ch, else no change
 
@@ -53,7 +54,7 @@ workflow HIFEVER {
 
 	// Build DIAMOND database from queries
 
-		def vir_db_ch = params.query_db ? query_db : BUILD_QUERY("query", query_ch)
+		def vir_db_ch = params.query_db ? user_dmnd_db : BUILD_QUERY("query", query_ch)
 
     // Unpack ftp list, download assemblies
     fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
