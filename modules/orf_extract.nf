@@ -1,5 +1,6 @@
 process ORF_EXTRACT {
 
+	tag "${context_fasta.baseName}"
 	container 'oras://community.wave.seqera.io/library/bedtools_emboss_seqtk:e61aac0b22bbd5e0'
 	conda 'bioconda::emboss=6.6.0 bioconda::seqtk=r93 bioconda::bedtools=2.31.1'
 
