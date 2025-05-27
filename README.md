@@ -1,5 +1,5 @@
 [![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
-![Nextflow](https://img.shields.io/badge/Nextflow->=v24.10.4-brightgreen)
+![Nextflow](https://img.shields.io/badge/Nextflow-24.10.5-brightgreen)
 
 # HI-FEVER
 
