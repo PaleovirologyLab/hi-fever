@@ -9,7 +9,7 @@ process BUILD_DIAMOND_DB {
 	path sequences //input file
 
 	output:
-	path "${label}_db.dmnd", emit: vir_db_ch
+	path "${label}_db.dmnd"
 	publishDir "${params.outdir}/${label}_db", mode: "copy"
 
 	"""
