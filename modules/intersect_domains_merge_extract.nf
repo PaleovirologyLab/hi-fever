@@ -66,9 +66,6 @@ process EXTRACT_SEQS_ANNOTATE_MATCHES {
     awk -v var="\$assemblyID" 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, var}' "\${assemblyID}_strict_coords.bed" > \
     "\${assemblyID}_locus_assembly_map.tsv"
 
-    # Clean up database files
-    # rm \$dbpath*
-
     """
 
 }
