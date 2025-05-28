@@ -4,15 +4,14 @@ channels = ["conda-forge", "bioconda"]
 description = "hi-fever pixi base and test tasks"
 name = "hi-fever"
 platforms = ["linux-64"]
-version = "0.2.0"
+version = "0.2.1"
 
 [tasks]
+
 test = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile apptainer" }
-testGetMeta = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --get_all_metadata -profile apptainer" }
-testCluster = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd -profile apptainer" }
 testConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile conda" }
-testGetMetaConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --get_all_metadata -profile conda" }
-testClusterConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd -profile conda" }
+customReciprocalFA = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db 20_per_fam_no_retro.fasta -profile apptainer" }
+customReciprocalDMND = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd -profile apptainer" }
 
 [dependencies]
 nextflow="==24.10.5"
