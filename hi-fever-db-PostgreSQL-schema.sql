@@ -8,8 +8,9 @@
 -- Instructions:
 -- 1. Select a server, or create a new one (host = localhost, user = postgres)
 -- 2. Create a new database within the server (e.g., hi-fever-db)
--- 3. Ensure sql data tables are located in a server accessible location (& edit import section of script accordingly, lines 246-264)
--- 4. Right-click database name in the object explorer -> Query tool -> upload/paste this script and run it
+-- 3. Ensure sql data tables are located in a server accessible location
+-- 4. Edit the import section of script to point to the HI-FEVER output files, lines 249-265)
+-- 5. Right-click database name in the object explorer -> Query tool -> upload/paste this script and run it
 
 
 -- MAIN SCRIPT --
@@ -245,23 +246,23 @@ ALTER TABLE hifever_schema.taxonomy OWNER TO postgres;
 
 -- Import data
 
-COPY assembly_statistics FROM '/home/user/Desktop/hi-fever/KG2010output/sql/assembly_stats.tsv' WITH DELIMITER E'\t' CSV;
+COPY assembly_statistics FROM '/HI-FEVER_OUTPUT_PATH/sql/assembly_stats.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY assembly_metadata FROM '/home/user/Desktop/hi-fever/KG2010output/sql/assembly_metadata.tsv' WITH DELIMITER E'\t' CSV;
+COPY assembly_metadata FROM '/HI-FEVER_OUTPUT_PATH/sql/assembly_metadata.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY best_forward_hits_pHMM FROM '/home/user/Desktop/hi-fever/KG2010output/sql/matches.dmnd.annot.tsv' WITH DELIMITER E'\t' NULL '.' CSV;
+COPY best_forward_hits_pHMM FROM '/HI-FEVER_OUTPUT_PATH/sql/matches.dmnd.annot.tsv' WITH DELIMITER E'\t' NULL '.' CSV;
 
-COPY genewise FROM '/home/user/Desktop/hi-fever/KG2010output/sql/genewise.tsv' WITH DELIMITER E'\t' CSV;
+COPY genewise FROM '/HI-FEVER_OUTPUT_PATH/sql/genewise.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY locus_to_assembly_junction_table FROM '/home/user/Desktop/hi-fever/KG2010output/sql/locus_assembly_map.tsv' WITH DELIMITER E'\t' CSV;
+COPY locus_to_assembly_junction_table FROM '/HI-FEVER_OUTPUT_PATH/sql/locus_assembly_map.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY predicted_orfs FROM '/home/user/Desktop/hi-fever/KG2010output/sql/predicted_ORFs.tsv' WITH DELIMITER E'\t' CSV;
+COPY predicted_orfs FROM '/HI-FEVER_OUTPUT_PATH/sql/predicted_ORFs.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY reciprocal_nr FROM '/home/user/Desktop/hi-fever/KG2010output/sql/reciprocal-nr-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
+COPY reciprocal_nr FROM '/HI-FEVER_OUTPUT_PATH/sql/reciprocal-nr-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY reciprocal_rvdb FROM '/home/user/Desktop/hi-fever/KG2010output/sql/reciprocal-rvdb-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
+COPY reciprocal_rvdb FROM '/HI-FEVER_OUTPUT_PATH/sql/reciprocal-rvdb-matches.dmnd.tsv' WITH DELIMITER E'\t' CSV;
 
-COPY taxonomy FROM '/home/user/Desktop/hi-fever/KG2010output/sql/taxonomy_table.tsv' WITH DELIMITER E'\t' CSV;
+COPY taxonomy FROM '/HI-FEVER_OUTPUT_PATH/sql/taxonomy_table.tsv' WITH DELIMITER E'\t' CSV;
 
 
 -- Add primary key constraints
