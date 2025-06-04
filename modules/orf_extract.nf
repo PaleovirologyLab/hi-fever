@@ -1,4 +1,8 @@
-process orf_extract {
+process ORF_EXTRACT {
+
+	tag "${context_fasta.baseName}"
+	container 'oras://community.wave.seqera.io/library/bedtools_emboss_seqtk:e61aac0b22bbd5e0'
+	conda 'bioconda::emboss=6.6.0 bioconda::seqtk=r93 bioconda::bedtools=2.31.1'
 
     input:
     path context_fasta
@@ -15,15 +19,15 @@ process orf_extract {
     # Converts ORF output to the original genomic loci in ascending BED format, with predicted protein sequence.
     # Removes redundancy (ORFs found in overlapping context FASTAs)
 
-    if [ -s $context_fasta ];
+    if [ -s ${context_fasta} ];
 
         then
 
-            title=\$(readlink -f $context_fasta | sed "s/.*\\///; s/_genomic.fna_context.fasta//")
+            title=\$(readlink -f ${context_fasta} | sed "s/.*\\///; s/_genomic.fna_context.fasta//")
 
-            cat $context_fasta | \
+            cat ${context_fasta} | \
             sed 's/:/-/' | \
-            getorf -sequence /dev/stdin -outseq /dev/stdout -minsize $params.orf_size_nt -find 1 2>/dev/null | \
+            getorf -sequence /dev/stdin -outseq /dev/stdout -minsize ${params.orf_size_nt} -find 1 2>/dev/null | \
             seqtk seq - | \
             sed -r "s/] .*//; s/_[0-9]+ \\[/ /; s/>//; s/-/ /g" | \
             tr -s ' ' '\t' | \
@@ -36,7 +40,7 @@ process orf_extract {
             # Intersect context ORFs with strict feature coordinates, reports:
             # locus coverage_of_feature_by_ORF coverage_of_ORF_by_feature ORF_start ORF_end ORF_strand ORF_seq
 
-            bedtools intersect -a $strict_coords -b context_ORFs.txt -wo -sorted | \
+            bedtools intersect -a ${strict_coords} -b context_ORFs.txt -wo -sorted | \
             awk 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, \$9/(\$3-\$2), (\$3-\$2)/(\$6-\$5), \$5, \$6, \$7, \$8}' > \
             \${title}_intersected_ORFs.txt
 

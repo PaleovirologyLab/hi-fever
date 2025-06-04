@@ -1,59 +1,10 @@
-process build_diamond_db {
-    input:
-    val label // label for output
-    path sequences //input file
 
-    output:
-    path "${label}_db.dmnd", emit: vir_db_ch
-    publishDir "${params.outdir}/${label}_db", mode: "copy"
 
-    """
-    diamond makedb --in $sequences -d ${label}_db
+process SINGLE_RECIPROCAL_DIAMOND {
 
-    """
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
+	conda 'bioconda::diamond=2.1.11'
 
-}
-
-process forward_diamond {
-
-    maxForks params.diamond_forks
-	tag "${meta.id}"
-
-    input:
-    tuple val(meta), path(assembly), path(db)
-
-    output:
-    tuple val(meta), path("*.dmnd.tsv")
-
-    //publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*.dmnd.tsv"
-
-    """
-
-    chunks=\$(echo ${assembly} | sed 's/_genomic.*/_genomic_chunks.fna.gz/')
-    cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / ${params.diamond_forks} : 1}')
-
-    seqkit sliding -s ${params.chunk_size} -W ${params.chunk_size} -g ${assembly} -o \$chunks
-
-    diamond blastx \
-    --${params.diamond_mode} \
-    --matrix ${params.diamond_matrix} \
-    --masking seg \
-    -d ${db} \
-    -q \$chunks \
-    -o matches.out \
-    -p \$cpu_count \
-    --max-target-seqs ${params.diamond_max_target_seqs} \
-    --outfmt 6 qseqid qstart qend qframe qlen sseqid sstart send slen evalue bitscore pident length mismatch gapopen
-
-	sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | \
-		awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' \
-		> "${assembly}_forward-matches-raw.dmnd.tsv"
-
-    """
-
-}
-
-process single_reciprocal_diamond {
 
     input:
     path reciprocal_db
@@ -68,14 +19,15 @@ process single_reciprocal_diamond {
     
 
     """ 
-   # Run reciprocal nr search, extract best reciprocal hit pairs & their alignment length
+
+	# Run reciprocal nr search, extract best reciprocal hit pairs & their alignment length
 
     diamond blastx \
-    --$params.diamond_mode \
-    --matrix $params.diamond_matrix \
+    --${params.diamond_mode} \
+    --matrix ${params.diamond_matrix} \
     --masking seg \
-    -d $reciprocal_db \
-    -q $loci_merged_fa \
+    -d ${reciprocal_db} \
+    -q ${loci_merged_fa} \
     -e 1e-5 \
     -k 10 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle full_sseq | \
@@ -86,13 +38,16 @@ process single_reciprocal_diamond {
     reciprocal-matches.dmnd.tsv
 
     # Zip up query file for outdir publication
-    cat $loci_merged_fa > loci-merged-coordinates.fasta.temp
+    cat ${loci_merged_fa} > loci-merged-coordinates.fasta.temp
     gzip loci-merged-coordinates.fasta.temp > loci-merged-coordinates.fasta.gz
     """
 
 }
 
-process find_best_diamond_hits {
+process FIND_BEST_DIAMOND_HITS {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
+	conda 'bioconda::seqtk=r93'
 
     input:
     path forward_matches
@@ -112,7 +67,7 @@ process find_best_diamond_hits {
     // publishDir "${params.outdir}/sql", mode: "copy", pattern: "all_forward.dmnd.annot.tsv"
 
     """
-    cat $forward_matches > all_forward.dmnd.annot.tsv
+    cat ${forward_matches} > all_forward.dmnd.annot.tsv
 
     # Extract best forward hit pairs & their alignment length
     awk 'BEGIN{OFS="\t"}; {print \$1,\$4,\$9-\$8, "forward"}' all_forward.dmnd.annot.tsv | \
@@ -120,7 +75,7 @@ process find_best_diamond_hits {
     forward_hits.txt
     
     # Merge reciprocal and forward hits
-    cat forward_hits.txt $reciprocal_hits > mixed_hits.txt
+    cat forward_hits.txt ${reciprocal_hits} > mixed_hits.txt
 
     # Determine best single protein-locus pair from both the forward & reciprocal searches
 
@@ -137,11 +92,11 @@ process find_best_diamond_hits {
 
     # Extract best proteins
 
-    seqtk subseq $reciprocal_seqs extract_from_reciprocal.txt | \
+    seqtk subseq ${reciprocal_seqs} extract_from_reciprocal.txt | \
     sed 's/ .*//' > \
     best_hits.fasta
 
-    seqtk subseq $query_proteins extract_from_forward.txt | \
+    seqtk subseq ${query_proteins} extract_from_forward.txt | \
     sed 's/ .*//' >> \
     best_hits.fasta
 
@@ -150,7 +105,10 @@ process find_best_diamond_hits {
 }
 
 
-process full_reciprocal_diamond {
+process FULL_RECIPROCAL_DIAMOND {
+
+	container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
+	conda 'bioconda::diamond=2.1.11 bioconda::seqtk=r93'
 
     input:
     path reciprocal_nr_db
@@ -173,11 +131,11 @@ process full_reciprocal_diamond {
     """ 
     # Run reciprocal nr search, extract best reciprocal hit pairs & their alignment length
     diamond blastx \
-    --$params.diamond_mode \
-    --matrix $params.diamond_matrix \
+    --${params.diamond_mode} \
+    --matrix ${params.diamond_matrix} \
     --masking seg \
-    -d $reciprocal_nr_db \
-    -q $loci_merged_fa \
+    -d ${reciprocal_nr_db} \
+    -q ${loci_merged_fa} \
     -e 1e-5 \
     -k 10 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
@@ -188,11 +146,11 @@ process full_reciprocal_diamond {
     # Run reciprocal RVDB search, extract best reciprocal hit pairs & their alignment length
 
     diamond blastx \
-    --$params.diamond_mode \
-    --matrix $params.diamond_matrix \
+    --${params.diamond_mode} \
+    --matrix ${params.diamond_matrix} \
     --masking seg \
-    -d $reciprocal_rvdb_db \
-    -q $loci_merged_fa \
+    -d ${reciprocal_rvdb_db} \
+    -q ${loci_merged_fa} \
     -e 1e-5 \
     -k 10 \
     --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames sskingdoms skingdoms sphylums stitle full_sseq | \
@@ -202,7 +160,7 @@ process full_reciprocal_diamond {
 
     # Concatenate forward hit tables
 
-    cat $forward_matches > matches.dmnd.annot.tsv
+    cat ${forward_matches} > matches.dmnd.annot.tsv
 
     # Extract best forward hit pairs & their alignment length
 
@@ -234,7 +192,7 @@ process full_reciprocal_diamond {
     sed 's/ .*//' >> \
     best_hits.fasta
 
-    seqtk subseq $query_proteins extract_from_forward.txt | \
+    seqtk subseq ${query_proteins} extract_from_forward.txt | \
     sed 's/ .*//' >> \
     best_hits.fasta
 

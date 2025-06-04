@@ -1,3 +1,6 @@
+[![Pixi Badge](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/prefix-dev/pixi/main/assets/badge/v0.json)](https://pixi.sh)
+![Nextflow](https://img.shields.io/badge/Nextflow-24.10.5-brightgreen)
+
 # HI-FEVER
 
 ## **Hi**gh-throughput next**f**low **EVE** **r**ecovery
@@ -46,7 +49,7 @@ If using conda, activate the environment. If using Docker on Mac (arm64), open a
 
 Run the HI-FEVER workflow from the root hi-fever folder with the following command (replacing the email address):
 
-`nextflow main.nf --query_file_aa data/20_per_fam_no_retro.fasta --ftp_file data/human_T2T_ftp.txt --email john.smith@email.com`
+`nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file human_T2T_ftp.txt --email john.smith@email.com`
 
 This will generate a folder called `output` with two subfolders: `accessory_fastas` and `sql`. These outputs are detailed on our [Usage page](https://github.com/PaleovirologyLab/hi-fever/wiki/Usage). For a guide on how to interpret these results, see our [Interpreting results page](https://github.com/PaleovirologyLab/hi-fever/wiki/Interpreting-results)
 

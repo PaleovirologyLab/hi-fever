@@ -1,4 +1,7 @@
-process genewise {
+process GENEWISE {
+
+	container 'oras://community.wave.seqera.io/library/bedtools_seqtk_wise2:ee4ed6f614938f39'
+	conda 'bioconda::wise2=2.4.1 bioconda::bedtools=2.31.1 bioconda::seqtk=r93'
 
     input:
     path pair_subsets
@@ -12,26 +15,31 @@ process genewise {
 
     """
 
-    # General setup for genewise
+	# General setup for genewise
 
-    export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
-    mkdir wise_tmp
+		if [ -n "\${APPTAINER_CONTAINER:-}" ]; then
+			export WISECONFIGDIR="/opt/conda/share/wise2/wisecfg"
+		else
+			export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
+		fi
+
+		mkdir wise_tmp
 
     # Prepare lists with sequences required per task, their pairing (loop input), original genomic coordinates, & BED of coords to intersect with context coords
 
-    cut -f1 $pair_subsets | sort | uniq > wise_tmp/required_proteins.txt
-    cut -f2 $pair_subsets | sort | uniq > wise_tmp/required_strict_nts.txt
-    cut -f1-2 $pair_subsets > wise_tmp/loop_input1.txt
-    cut -f5-7 $pair_subsets > wise_tmp/genomic_coords1
-    awk 'BEGIN {OFS="\t"} {print \$5, \$6, \$7, \$1}' $pair_subsets | sort -k1,1 -k2,2n > wise_tmp/intersection_bed
+    cut -f1 ${pair_subsets} | sort | uniq > wise_tmp/required_proteins.txt
+    cut -f2 ${pair_subsets} | sort | uniq > wise_tmp/required_strict_nts.txt
+    cut -f1-2 ${pair_subsets} > wise_tmp/loop_input1.txt
+    cut -f5-7 ${pair_subsets} > wise_tmp/genomic_coords1
+    awk 'BEGIN {OFS="\t"} {print \$5, \$6, \$7, \$1}' ${pair_subsets} | sort -k1,1 -k2,2n > wise_tmp/intersection_bed
 
     # Extract required sequence subsets
 
-    seqtk subseq $best_hit_proteins wise_tmp/required_proteins.txt | \
+    seqtk subseq ${best_hit_proteins} wise_tmp/required_proteins.txt | \
     sed 's/ .*//' > \
     wise_tmp/subset_proteins.fa
 
-    seqtk subseq $strict_fastas wise_tmp/required_strict_nts.txt | \
+    seqtk subseq ${strict_fastas} wise_tmp/required_strict_nts.txt | \
     sed 's/ .*//' > \
     wise_tmp/subset_strict_nts.fa
 
@@ -47,7 +55,7 @@ process genewise {
         do
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "$params.genewise_matrix".bla -sum -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "${params.genewise_matrix}".bla -sum -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -79,7 +87,7 @@ process genewise {
 
     # Extract required sequence subset
 
-    seqtk subseq $context_fastas wise_tmp/required_context_nts.txt | \
+    seqtk subseq ${context_fastas} wise_tmp/required_context_nts.txt | \
     sed 's/ .*//' > \
     wise_tmp/subset_context_nts.fa
 
@@ -93,7 +101,7 @@ process genewise {
         do
             query=\$(echo \$line | cut -f1 -d ' ')
             target=\$(echo \$line | cut -f2 -d ' ')
-            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "$params.genewise_matrix".bla -sum -cdna -divide DIVIDE_STRING -silent | \
+            genewise wise_tmp/\$query wise_tmp/\$target -both -kbyte 2000000 -matrix "${params.genewise_matrix}".bla -sum -cdna -divide DIVIDE_STRING -silent | \
             grep -v ">\\|Bits   Query\\|intron" | \
             awk '/^[-0-9]/ {printf("%s%s\\t",(N>0?"\\n":""),\$0);N++;next;} {printf("%s",\$0);} END {printf("\\n");}' | \
             sed 's/DIVIDE_STRING/\t/g' | \
@@ -134,12 +142,13 @@ process genewise {
 
     # Post-processing of in-frame STOPs
 
-    stopConvertAndCount.py --task $params.stop_task --file wise_tmp/merged_results > wise_tmp/stops_processed
+    stopConvertAndCount.py --task ${params.stop_task} --file wise_tmp/merged_results > wise_tmp/stops_processed
 
     # Translation of coding sequences
     # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
 
     translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
+
     """
 
 }

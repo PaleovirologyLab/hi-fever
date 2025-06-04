@@ -1,0 +1,18 @@
+[project]
+authors = ["CormacKinsella <27350062+CormacKinsella@users.noreply.github.com>"]
+channels = ["conda-forge", "bioconda"]
+description = "hi-fever pixi base and test tasks"
+name = "hi-fever"
+platforms = ["linux-64"]
+version = "0.2.1"
+
+[tasks]
+
+test = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile apptainer" }
+testConda = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com -profile conda" }
+customReciprocalFA = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db 20_per_fam_no_retro.fasta -profile apptainer" }
+customReciprocalDMND = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file vertebrate_genomes_n5.txt --email noreply@gmail.com --cluster_query --custom_reciprocal --custom_reciprocal_db MINI_rvdbv28_wtaxa.dmnd -profile apptainer" }
+
+[dependencies]
+nextflow="==24.10.5"
+apptainer="==1.3.6"
