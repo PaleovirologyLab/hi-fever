@@ -33,6 +33,9 @@ include { ORF_EXTRACT } from '../modules/orf_extract.nf'
 include { BUILD_HITS_TAXONOMY_TABLE } from '../modules/hits_taxonomy.nf'
 include { FETCH_HITS_TAXONOMY_FROM_ACCNS } from '../modules/hits_taxonomy.nf'
 
+// Create summary table and extract fasta sequences for cdna and reconstructed proteins
+include {CREATE_SUMMARY_TABLE} from '../modules/create_summary_table.nf'
+
 // Publish concatenated tables with results of all hosts
 include { CONCATENATE_PUBLISH_TABLES as PUBLISH_PREDICTED_ORFS} from '../modules/utils.nf'
 include { CONCATENATE_PUBLISH_TABLES as PUBLISH_FORWARD_DIAMOND} from '../modules/utils.nf'
@@ -126,6 +129,7 @@ workflow HIFEVER {
 		loci_merged_context_gz = MERGE_SEQS_LOCI.out.loci_merged_context_gz.collect()
 		all_context_coords_bed = MERGE_SEQS_LOCI.out.all_context_coords_bed.collect()
 
+
 	// Run reciprocal DIAMOND
 
 		// Workflow for user custom reciprocal database	(single db)
@@ -211,13 +215,18 @@ workflow HIFEVER {
 
 	// Reconstruction of encoded proteins. Returns number of STOP codons, frameshifts and indels
 
-		GENEWISE(best_pairs_subsets,
-				best_hit_proteins_val,
-				loci_merged_fa,
-				loci_merged_context_gz,
-				all_context_coords_bed).collectFile(name: 'genewise.tsv',
-												newLine: false,
-												storeDir: "${params.outdir}/sql")
+        genewise_result = GENEWISE(best_pairs_subsets,
+                best_hit_proteins_val,
+                loci_merged_fa,
+                loci_merged_context_gz,
+                all_context_coords_bed)
+
+
+    // Merge genewise results into a single file            
+       
+        merged_genewise_file = genewise_result.genewise_file.collectFile(name: 'genewise.tsv', 
+                                                                        newLine: false, 
+                                                                        storeDir: "${params.outdir}/sql")
 
 	// Publish files
 
@@ -228,5 +237,19 @@ workflow HIFEVER {
 		cat_orfs = PUBLISH_PREDICTED_ORFS(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
 		locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
 		cat_assembly_map = PUBLISH_ASSEMBLY_MAP(locus_assembly_maps, "locus_assembly_map.tsv")
+
+    
+    // Get a summary table with statistics and classification of query loci
+
+        summary_table = CREATE_SUMMARY_TABLE(
+            reciprocal_nr = FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
+            reciprocal_rvdb = FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
+            taxonomy = hits_taxonomy,
+            assembly_map = cat_assembly_map,
+            assembly_metadata = metadata_channel.assembly_metadata,
+            genewise = merged_genewise_file
+        )
+
+
 
 }

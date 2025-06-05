@@ -28,13 +28,13 @@ HI-FEVER provides a variety of output information about candidate EVEs, suited t
 HI-FEVER is available for use on LINUX, Windows (WSL) and Mac through Conda and Docker. Full documentation can be found in [the wiki](https://github.com/PaleovirologyLab/hi-fever/wiki).
 
 ## Test run
-To experiment with and explore HI-FEVER options we provide instructions on running a test dataset below. All data used for this test are available on our Open Science Framework repository [here](https://osf.io/y357r/) in the test_run folder.
+To experiment with and explore HI-FEVER options we provide instructions on running a test dataset below. All data used for this test are available on our Open Science Framework repository [here](https://osf.io/y357r/) in the sample_run folder.
 
 **Preparation**
 
 Ensure the required files are in the hi-fever/data folder:
-* `20_per_fam_no_retro.fasta` protein query file
-* `human_T2T_ftp.txt` link to the human genome ftp
+* `query_20perfamNoRetro.fasta` protein query file
+* `genome_human_ftp.txt` link to the human genome ftp
 * `taxdump.tar.gz` taxonomy map file
 * `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz`: the minimal database built from the NCBI non-redundant database
 * `MINI_rvdbv28_wtaxa.dmnd.tar.xz`: the minimal database built from the RVDB database
