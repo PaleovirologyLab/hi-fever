@@ -8,10 +8,9 @@ process genewise {
     path context_coords_val
 
     output:
-    stdout
+    path("temp_genewise.tsv"), emit: genewise_file
 
     """
-
     # General setup for genewise
 
     export WISECONFIGDIR="\$CONDA_PREFIX/share/wise2/wisecfg"
@@ -139,7 +138,7 @@ process genewise {
     # Translation of coding sequences
     # Outputs: contig genomic_start genomic_end strand locus sourceFASTA bitscore query qstart qend cdna peptide intron_count idels_frameshifts inframe_STOPs
 
-    translateCodingSequence.py --input wise_tmp/stops_processed --output /dev/stdout
+    translateCodingSequence.py --input wise_tmp/stops_processed --output temp_genewise.tsv
     """
 
 }

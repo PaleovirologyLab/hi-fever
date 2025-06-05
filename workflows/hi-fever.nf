@@ -33,6 +33,9 @@ include { orf_extract } from '../modules/orf_extract.nf'
 include { build_hits_taxonomy_table } from '../modules/hits_taxonomy.nf'
 include { fetch_hits_taxonomy_from_accns } from '../modules/hits_taxonomy.nf'
 
+// Create summary table and extract fasta sequences for cdna and reconstructed proteins
+include {CREATE_SUMMARY_TABLE} from '../modules/create_summary_table.nf'
+
 // Publish concatenated tables with results of all hosts
 include { concatenate_publish_tables as publish_predicted_orfs} from '../modules/utils.nf'
 include { concatenate_publish_tables as publish_forward_diamond} from '../modules/utils.nf'
@@ -95,7 +98,7 @@ workflow HIFEVER {
 	rejoinDb = forward_diamond_out.join(blastdb.out, by: [0]) // Joins on shared metadata (assembly)
 
 
-  // Extract genome locus with hits, and their flanking regions
+    // Extract genome locus with hits, and their flanking regions
     extract_seqs_outputs = extract_seqs_annotate_matches(rejoinDb)
 
     // Inputs for reciprocal DIAMOND:
@@ -165,13 +168,15 @@ workflow HIFEVER {
     }
     
     // Reconstruction of encoded proteins. Returns number of STOP codons, frameshifts and indels
-    genewise(best_pairs_subsets,
+    genewise_result = genewise(best_pairs_subsets,
             best_hit_proteins_val,
             loci_merged_fa,
             loci_merged_context_gz,
-            all_context_coords_bed).collectFile(name: 'genewise.tsv', 
-                                            newLine: false, 
-                                            storeDir: "${params.outdir}/sql")
+            all_context_coords_bed)
+            
+    merged_genewise_file = genewise_result.genewise_file.collectFile(name: 'genewise.tsv', 
+                                                                     newLine: false, 
+                                                                     storeDir: "${params.outdir}/sql")
 
     // Publish files
     cat_forward = publish_forward_diamond(forward_matches, "forward-matches.dmnd.annot.tsv")
@@ -181,6 +186,19 @@ workflow HIFEVER {
     cat_orfs = publish_predicted_orfs(predicted_orfs.orfs.collect(), "predicted_orfs.tsv")
     locus_assembly_maps = extract_seqs_outputs.locus_assembly_map_ch.collect()
     cat_assembly_map = publish_assembly_map(locus_assembly_maps, "locus_assembly_map.tsv")
+
+    summary_table = CREATE_SUMMARY_TABLE(
+        reciprocal_nr = full_reciprocal_diamond.out.reciprocal_nr_matches_ch,
+        reciprocal_rvdb = full_reciprocal_diamond.out.reciprocal_rvdb_matches_ch,
+        taxonomy = hits_taxonomy,
+        assembly_map = cat_assembly_map,
+        assembly_metadata = metadata_channel.assembly_metadata,  // or appropriate channel if using `get_all_metadata`
+        genewise = merged_genewise_file
+        // label: "run1",
+        // aa_len: params.aa_len,
+        // sequence_file: params.sequence_file,
+        // filter_by: params.filter_by
+    )
 
 
 
