@@ -14,6 +14,7 @@ process SINGLE_RECIPROCAL_DIAMOND {
     path "reciprocal-matches.dmnd.tsv", emit: reciprocal_matches
     path "reciprocal_hits.txt", emit: reciprocal_hits
     path "reciprocal_seqs.fasta", emit: reciprocal_seqs
+    path "best_reciprocal_hits.txt", emit: best_reciprocal_hits
 
     publishDir "${params.outdir}/sql", mode: "copy", pattern: "reciprocal-matches.dmnd.tsv"
     
@@ -23,19 +24,18 @@ process SINGLE_RECIPROCAL_DIAMOND {
 	# Run reciprocal nr search, extract best reciprocal hit pairs & their alignment length
 
     diamond blastx \
-    --${params.diamond_mode} \
-    --matrix ${params.diamond_matrix} \
-    --masking seg \
-    -d ${reciprocal_db} \
-    -q ${loci_merged_fa} \
-    -e 1e-5 \
-    -k 10 \
-    --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle full_sseq | \
-    tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | \
-    tee >(awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal"}' > reciprocal_hits.txt) \
-    | cut -f2,19 | sort -u -k1,1 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_seqs.fasta) | \
-    cut -f1-18 > \
-    reciprocal-matches.dmnd.tsv
+        --${params.diamond_mode} \
+        --matrix ${params.diamond_matrix} \
+        --masking seg \
+        -d ${reciprocal_db} \
+        -q ${loci_merged_fa} \
+        -e 1e-5 \
+        -k 10 \
+        --outfmt 6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle full_sseq | \
+        tee >(awk 'BEGIN{OFS="\t"} {print \$2, \$1, \$4 * 3, "reciprocal"}' > reciprocal_hits.txt) \
+        | tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | awk 'BEGIN{OFS="\t"}; {print \$2, \$1, \$4 * 3, "reciprocal"}' > best_reciprocal_hits.txt) \
+        | tee >(sort -k1,1 -k12,12nr | sort -u -k1,1 | cut -f2,14 | awk '{print ">"\$1"\\n"\$2}' > reciprocal_seqs.fasta)  \
+        | cut -f1-18 > reciprocal-matches.dmnd.tsv
 
     # Zip up query file for outdir publication
     cat ${loci_merged_fa} > loci-merged-coordinates.fasta.temp

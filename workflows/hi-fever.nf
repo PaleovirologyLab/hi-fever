@@ -34,7 +34,8 @@ include { BUILD_HITS_TAXONOMY_TABLE } from '../modules/hits_taxonomy.nf'
 include { FETCH_HITS_TAXONOMY_FROM_ACCNS } from '../modules/hits_taxonomy.nf'
 
 // Create summary table and extract fasta sequences for cdna and reconstructed proteins
-include {CREATE_SUMMARY_TABLE} from '../modules/create_summary_table.nf'
+include {CREATE_SUMMARY_TABLE_CUSTOM} from '../modules/create_summary_table.nf'
+include {CREATE_SUMMARY_TABLE_FULL} from '../modules/create_summary_table.nf'
 
 // Publish concatenated tables with results of all hosts
 include { CONCATENATE_PUBLISH_TABLES as PUBLISH_PREDICTED_ORFS} from '../modules/utils.nf'
@@ -166,9 +167,10 @@ workflow HIFEVER {
 				// run reciprocal DIAMOND and publish results
 
 				SINGLE_RECIPROCAL_DIAMOND(reciprocal_db, loci_merged_fa)
-				reciprocal_matches = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_matches.collect()
-				reciprocal_seqs = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_seqs.collect()
-				reciprocal_hits = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_hits.collect()
+				reciprocal_matches = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_matches
+				reciprocal_seqs = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_seqs
+				reciprocal_hits = SINGLE_RECIPROCAL_DIAMOND.out.best_reciprocal_hits
+                all_reciprocal_hits = SINGLE_RECIPROCAL_DIAMOND.out.reciprocal_hits
 
 				// Find best hits
 
@@ -184,7 +186,7 @@ workflow HIFEVER {
 				all_diamond_hits = FIND_BEST_DIAMOND_HITS.out.forward_plus_reciprocal_dmnd_hits.collect()
 
 				// Make taxonomy and publish table for proteins
-				hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_diamond_hits)
+				hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_reciprocal_hits)
 
 		} else {
 
@@ -240,16 +242,25 @@ workflow HIFEVER {
 
     
     // Get a summary table with statistics and classification of query loci
+        if (params.custom_reciprocal) {
+                summary_table = CREATE_SUMMARY_TABLE_CUSTOM(
+                    reciprocal_rvdb = reciprocal_matches.collect(),
+                    taxonomy = hits_taxonomy,
+                    assembly_map = cat_assembly_map,
+                    assembly_metadata = metadata_channel.assembly_metadata,
+                    genewise = merged_genewise_file
+            )
+        } else {
+            summary_table = CREATE_SUMMARY_TABLE_FULL(
+                reciprocal_nr = FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
+                reciprocal_rvdb = FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
+                taxonomy = hits_taxonomy,
+                assembly_map = cat_assembly_map,
+                assembly_metadata = metadata_channel.assembly_metadata,
+                genewise = merged_genewise_file
+            )
 
-        summary_table = CREATE_SUMMARY_TABLE(
-            reciprocal_nr = FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
-            reciprocal_rvdb = FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
-            taxonomy = hits_taxonomy,
-            assembly_map = cat_assembly_map,
-            assembly_metadata = metadata_channel.assembly_metadata,
-            genewise = merged_genewise_file
-        )
-
+        }
 
 
 }

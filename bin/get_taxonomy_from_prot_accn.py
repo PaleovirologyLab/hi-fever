@@ -10,6 +10,7 @@ from time import sleep
 
 import modin.pandas as pd
 import argparse
+import re
 import sys
 
 def get_record_taxonomy(record):
@@ -72,7 +73,11 @@ if __name__ =="__main__":
         all_hits = pd.read_csv(args.diamond_hits, sep="\t", usecols=[0,1], header=None)
         all_hits.columns = ["hit_accn", "locus"]
     
-    unique_accn = all_hits["hit_accn"].unique()
+    # Use regex to extract the accession number
+    all_hits["accn"] = all_hits["hit_accn"].str.extract(r"^([A-Z]{2,}(?:_[\d]+|[\d]+)(?:\.\d+)?)")
+
+    # Search unique accessions
+    unique_accn = all_hits["accn"].dropna().unique()
     accns = unique_accn.tolist()
     # Get taxonomical information for unique accessions
     Entrez.email = args.email
