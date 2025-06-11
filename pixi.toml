@@ -16,3 +16,11 @@ customReciprocalDMND = {cmd = "nextflow main.nf --query_file_aa 20_per_fam_no_re
 [dependencies]
 nextflow="==24.10.5"
 apptainer="==1.3.6"
+python="==3.12"
+
+[pypi-dependencies]
+numpy = "*"
+pandas = "*"
+modin = {extras = ["ray"]}
+biopython = "*"
+typing-extensions = "*"
