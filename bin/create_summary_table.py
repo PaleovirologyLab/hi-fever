@@ -3,7 +3,8 @@ description = """
 Combines metadata from sql tables of hi-fever output and classify loci based on hit trends
 Usage: python3 /Projects/testing-hi-fever/10genomes_200perfam_noretro/sql/
 """
-import modin.pandas as pd
+#import modin.pandas as pd
+import pandas as pd
 import re
 import argparse
 import sys
