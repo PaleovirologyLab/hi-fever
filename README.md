@@ -71,4 +71,4 @@ HI-FEVER is based on the following libraries and programs directory along with t
 ### Citation
 Please include the following citation when using HI-FEVER in your projects.
 
-Barreat, J.G.N., Baena-Munoz, L., Harding, E.F., Kinsella, C.M. \& Katzourakis, A. HI-FEVER GitHub and data repository. DOI: [https://doi.org/10.17605/OSF.IO/Y357R](https://doi.org/10.17605/OSF.IO/Y357R)
+Laura Muñoz-Baena, Emma F Harding, Jose Gabriel Nino Barreat, Cormac M Kinsella, Aris Katzourakis, HI-FEVER: a Nextflow pipeline for the high-throughput discovery and annotation of endogenous viral elements, Bioinformatics, 2025;, btaf610, https://doi.org/10.1093/bioinformatics/btaf610
