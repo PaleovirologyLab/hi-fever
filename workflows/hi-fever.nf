@@ -83,7 +83,8 @@ workflow HIFEVER {
 										def fileName = assembly.name
 										fileName = fileName.replaceFirst(/\.gz$/, '')
 										fileName = fileName.replaceFirst(/\.(fa|fna|fasta)$/, '')
-										def accession = fileName.replaceFirst(/_genomic$/, '')
+										def accession_match = (fileName =~ /(GCA|GCF)_\d+(?:\.\d+)?/)
+										def accession = accession_match ? accession_match[0] : fileName.replaceFirst(/_genomic$/, '')
 										def meta = [
 										id: accession
 										]
