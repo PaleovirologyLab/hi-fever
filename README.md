@@ -51,6 +51,25 @@ Run the HI-FEVER workflow from the root hi-fever folder with the following comma
 
 `nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file human_T2T_ftp.txt --email john.smith@email.com`
 
+### Assembly input modes
+
+HI-FEVER supports two host assembly input modes:
+
+* FTP mode (default): provide `--ftp_file` with one assembly FTP directory per line.
+* Local mode: provide local assembly FASTA file(s) with `--assembly_mode local --assembly_file "<glob-or-file>"`.
+
+Local mode example:
+
+`nextflow main.nf --assembly_mode local --assembly_file "assemblies/*.fna.gz" --query_file_aa 20_per_fam_no_retro.fasta --custom_reciprocal --custom_reciprocal_db custom.dmnd --allow_missing_taxonomy true`
+
+Optional in local mode:
+* `--assembly_metadata_file` for a tab-separated file with two columns: `hostName`, `assembly_id`.
+
+If taxonomy/metadata files are not available in local mode:
+* Core locus discovery, reciprocal search, and genewise reconstruction still run.
+* Host metadata fields in summary outputs default to `unknown_host` unless metadata is provided.
+* Taxonomy-based annotations/classification may be reduced (more `uncertain` classifications).
+
 This will generate a folder called `output` with two subfolders: `accessory_fastas` and `sql`. These outputs are detailed on our [Usage page](https://github.com/PaleovirologyLab/hi-fever/wiki/Usage). For a guide on how to interpret these results, see our [Interpreting results page](https://github.com/PaleovirologyLab/hi-fever/wiki/Interpreting-results)
 
 ## Acknowledgements
