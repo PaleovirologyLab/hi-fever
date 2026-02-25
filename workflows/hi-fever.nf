@@ -49,6 +49,7 @@ workflow HIFEVER {
 	// Create channels for protein FASTA query and select assembly source
 
 		def assembly_mode = (params.assembly_mode ?: 'ftp').toString().toLowerCase()
+		def allow_missing_taxonomy = (params.allow_missing_taxonomy ?: false) as boolean
 		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
 		def ftp_ch = null
 		def fetched_assembly_files
@@ -110,12 +111,19 @@ workflow HIFEVER {
 									ncbi_tax_table)
 			metadata_channel = [assembly_metadata: DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch]
 		} else {
-			if (!params.assembly_metadata_file) {
-				error "ERROR: '--assembly_metadata_file' is currently required in local assembly mode."
+			if (params.assembly_metadata_file) {
+				metadata_channel = [
+					assembly_metadata: Channel.fromPath("${params.data_path}/${params.assembly_metadata_file}", checkIfExists: true)
+				]
+			} else {
+				def placeholder_metadata = assembly_with_accession
+					.map { meta, assembly -> "unknown_host\t${meta.id}\n" }
+					.collectFile(name: 'assembly_metadata.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+
+				metadata_channel = [
+					assembly_metadata: placeholder_metadata
+				]
 			}
-			metadata_channel = [
-				assembly_metadata: Channel.fromPath("${params.data_path}/${params.assembly_metadata_file}", checkIfExists: true)
-			]
 		}
 
 	// Run forward DIAMOND using chunks of the genome as queries against the viral DMND database
@@ -202,8 +210,15 @@ workflow HIFEVER {
 				best_hit_proteins_val = FIND_BEST_DIAMOND_HITS.out.best_hits_fa_ch.collect()
 				all_diamond_hits = FIND_BEST_DIAMOND_HITS.out.forward_plus_reciprocal_dmnd_hits.collect()
 
-				// Make taxonomy and publish table for proteins
-				hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_reciprocal_hits)
+				// Make taxonomy table for proteins, or placeholder if skipped
+				if (params.email) {
+					hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_reciprocal_hits)
+				} else if (allow_missing_taxonomy) {
+					hits_taxonomy = Channel.of("record_id\tall_taxonomy\tfamily\tviral_order\tviral_kingdom\nN/A\tN/A\tN/A\tN/A\tN/A\n")
+						.collectFile(name: 'hits_taxonomy.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+				} else {
+					error "ERROR: '--email' is required for custom reciprocal taxonomy lookup, or set '--allow_missing_taxonomy true'."
+				}
 
 		} else {
 
@@ -222,13 +237,19 @@ workflow HIFEVER {
 			best_hit_proteins_val = FULL_RECIPROCAL_DIAMOND.out.best_hits_fa_ch.collect()
 			all_diamond_hits = FULL_RECIPROCAL_DIAMOND.out.mixed_hits.collect()
 
-			// Read taxonomy table to build hits taxonomy
-			def ncbi_tax_table_hits = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
-
-			// Build hits taxonomy from annotated diamond database
-			hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE(FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
-													FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
-													ncbi_tax_table_hits)
+			// Read taxonomy table to build hits taxonomy, or fallback to placeholder
+			def ncbi_taxonomy_path = file("${params.data_path}/${params.ncbi_taxonomy_table}")
+			if (ncbi_taxonomy_path.exists()) {
+				def ncbi_tax_table_hits = Channel.fromPath(ncbi_taxonomy_path.toString(), checkIfExists: true)
+				hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE(FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
+														FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
+														ncbi_tax_table_hits)
+			} else if (allow_missing_taxonomy) {
+				hits_taxonomy = Channel.of("N/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\n")
+					.collectFile(name: 'hits_taxonomy.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+			} else {
+				error "ERROR: Missing '${params.data_path}/${params.ncbi_taxonomy_table}'. Provide taxonomy file or set '--allow_missing_taxonomy true'."
+			}
 
 		}
 

@@ -33,7 +33,8 @@ workflow VERIFY {
 
 	// Check email only when Entrez-dependent features are enabled
 
-		def needs_email = params.custom_reciprocal || assembly_mode == 'ftp' || params.get_all_metadata
+		def allow_missing_taxonomy = (params.allow_missing_taxonomy ?: false) as boolean
+		def needs_email = assembly_mode == 'ftp' || params.get_all_metadata || (params.custom_reciprocal && !allow_missing_taxonomy)
 		if (needs_email && !params.email) {
 			error "ERROR: The '--email' parameter is required for Entrez API transactions in this configuration."
 		}
