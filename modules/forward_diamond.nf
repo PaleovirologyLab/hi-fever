@@ -16,7 +16,7 @@ process FORWARD_DIAMOND {
 
     """
 
-    chunks=\$(echo ${assembly} | sed 's/_genomic.*/_genomic_chunks.fna.gz/')
+    chunks="${meta.id}_chunks.fna.gz"
     cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / ${params.diamond_forks} : 1}')
 
     seqkit sliding -s ${params.chunk_size} -W ${params.chunk_size} -g ${assembly} -o \$chunks
@@ -34,7 +34,7 @@ process FORWARD_DIAMOND {
 
 	sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | \
 		awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' \
-		> "${assembly}_forward-matches-raw.dmnd.tsv"
+		> "${meta.id}_forward-matches-raw.dmnd.tsv"
 
     """
 

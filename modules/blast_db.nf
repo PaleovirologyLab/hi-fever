@@ -11,11 +11,15 @@ process BLASTDB {
 	tuple val(meta), path(assembly)
 
 	output:
-	tuple val(meta), path("*.gz*nsq")
+	tuple val(meta), path("*.nsq")
 
 	"""
 
-    gunzip -c ${assembly} | makeblastdb -in - -out ${assembly} -title ${assembly} -dbtype nucl -parse_seqids
+    if [[ "${assembly}" == *.gz ]]; then
+        gunzip -c ${assembly}
+    else
+        cat ${assembly}
+    fi | makeblastdb -in - -out ${meta.id} -title ${meta.id} -dbtype nucl -parse_seqids
 
 	"""
 
