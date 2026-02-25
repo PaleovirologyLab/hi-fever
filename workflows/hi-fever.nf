@@ -46,10 +46,12 @@ include { CONCATENATE_PUBLISH_TABLES as PUBLISH_ASSEMBLY_MAP} from '../modules/u
 
 workflow HIFEVER {
 
-	// Create channels for protein FASTA query, assembly list (ftp links)
+	// Create channels for protein FASTA query and select assembly source
 
+		def assembly_mode = (params.assembly_mode ?: 'ftp').toString().toLowerCase()
 		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
-		def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+		def ftp_ch = null
+		def fetched_assembly_files
 
 	// If user provides own DMND query db (--query_db), create DIAMOND query channel from path
 
@@ -65,15 +67,22 @@ workflow HIFEVER {
 
 		vir_db_ch = params.query_db ? user_dmnd_db : BUILD_QUERY("query", query_ch)
 
-	// Unpack ftp list, download assemblies
+	// Build assembly file channel from FTP list or local file(s)
 
-		fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
+		if (assembly_mode == 'ftp') {
+			ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+			fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
+		} else {
+			fetched_assembly_files = Channel.fromPath("${params.data_path}/${params.assembly_file}", checkIfExists: true)
+		}
 
-	// Add assembly accession as a meta field alongside assembly file path
+	// Add assembly identifier as a meta field alongside assembly file path
 
 		assembly_with_accession = fetched_assembly_files.map { assembly ->
-										def fileName = assembly.baseName
-										def accession = fileName.split('_')[0..1].join('_')
+										def fileName = assembly.name
+										fileName = fileName.replaceFirst(/\.gz$/, '')
+										fileName = fileName.replaceFirst(/\.(fa|fna|fasta)$/, '')
+										def accession = fileName.replaceFirst(/_genomic$/, '')
 										def meta = [
 										id: accession
 										]
@@ -85,20 +94,28 @@ workflow HIFEVER {
 		assembly_stats = ASSEMBLY_STATS(fetched_assembly_files)
 			.collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
-	// Get entrez metadata entries for either the downloaded assemblies or all eukaryotes
+	// Get assembly metadata
 
-		if (!params.get_all_metadata) {
+		if (assembly_mode == 'ftp' && !params.get_all_metadata) {
 			// Download metadata only for genomes on ftp file
 			metadata_channel = GET_METADATA(assembly_stats)
 			FETCH_HOST_TAXONOMY(metadata_channel.assembly_metadata)
 
-		} else {
+		} else if (assembly_mode == 'ftp' && params.get_all_metadata) {
 			// Download assembly metadata for all eukaryotes
 			DOWNLOAD_EXTRACT_HOST_METADATA()
 			def ncbi_tax_table = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
 			BUILD_HOST_TAXONOMY_TABLE( ftp_ch,
 									DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch,
 									ncbi_tax_table)
+			metadata_channel = [assembly_metadata: DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch]
+		} else {
+			if (!params.assembly_metadata_file) {
+				error "ERROR: '--assembly_metadata_file' is currently required in local assembly mode."
+			}
+			metadata_channel = [
+				assembly_metadata: Channel.fromPath("${params.data_path}/${params.assembly_metadata_file}", checkIfExists: true)
+			]
 		}
 
 	// Run forward DIAMOND using chunks of the genome as queries against the viral DMND database
