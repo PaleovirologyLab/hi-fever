@@ -88,6 +88,36 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
+## Create Summary Table (Full) Test Added (Module Level)
+
+### What was added
+- Synthetic module test for `CREATE_SUMMARY_TABLE_FULL` with minimal TSV inputs.
+- Asserts that the summary output contains `element_type` and includes `likely-eve`.
+
+### Files added/updated
+- `tests/nf/create_summary_full_test.nf`
+- `tests/test_modules_nextflow.py`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
+
+## Create Summary Table (Custom) Test Added (Module Level)
+
+### What was added
+- Synthetic module test for `CREATE_SUMMARY_TABLE_CUSTOM` with minimal TSV inputs.
+- Asserts that the summary output contains `element_type`.
+
+### Files added/updated
+- `tests/nf/create_summary_custom_test.nf`
+- `tests/test_modules_nextflow.py`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
+
 ## TODO — Remaining Tests to Implement
 - End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
 - Reciprocal mode tests:
@@ -97,8 +127,6 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 - Taxonomy behavior:
   - With `--email`.
   - With `--allow_missing_taxonomy` fallback.
-- Module-level tests:
-  - `CREATE_SUMMARY_TABLE_*` integration.
 - Output schema regression tests:
   - Summary table columns.
   - `sql/` output filenames.

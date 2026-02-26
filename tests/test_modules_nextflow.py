@@ -18,6 +18,7 @@ TRANSLATE_CDS_BIN = shutil.which("translateCodingSequence.py")
 REPO_BIN = REPO_ROOT / "bin"
 LOCAL_STOP_CONVERT = REPO_BIN / "stopConvertAndCount.py"
 LOCAL_TRANSLATE_CDS = REPO_BIN / "translateCodingSequence.py"
+CREATE_SUMMARY_BIN = REPO_BIN / "create_summary_table.py"
 
 
 @unittest.skipIf(NEXTFLOW_BIN is None, "nextflow is not installed in PATH")
@@ -451,6 +452,231 @@ class TestNextflowModules(unittest.TestCase):
             manifest = outdir / "genewise_manifest.txt"
             self.assertTrue(manifest.exists(), "genewise_manifest.txt was not created")
             self.assertTrue(manifest.read_text(encoding="utf-8").strip(), "genewise_manifest.txt is empty")
+
+    def test_create_summary_table_full_synthetic(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_full_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-summary-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_nr = run_dir / "reciprocal-nr-matches.dmnd.tsv"
+            reciprocal_rvdb = run_dir / "reciprocal-rvdb-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "NC_1:2001-4001"
+            assembly_id = "GCF_000000001.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    "BAV60921.1",
+                    "99.0",
+                    "667",
+                    "0",
+                    "0",
+                    "1",
+                    "2001",
+                    "1",
+                    "2001",
+                    "0.0",
+                    "1293",
+                    "123",
+                    "TestVirus",
+                    "Viruses",
+                    "Viruses",
+                    "Negarnaviricota",
+                    "RNA-dependent RNA polymerase",
+                ]
+            )
+            reciprocal_nr.write_text(reciprocal_row + "\n", encoding="utf-8")
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "\t".join(
+                    [
+                        "123",
+                        "Viruses",
+                        "Viruses",
+                        "Negarnaviricota",
+                        "Monjiviricetes",
+                        "Mononegavirales",
+                        "Bornaviridae",
+                        "Orthobornavirus",
+                        "TestVirus",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\t{assembly_id}\n", encoding="utf-8")
+            assembly_metadata.write_text(f"TestHost\t{assembly_id}\n", encoding="utf-8")
+
+            # Genewise TSV columns (by position expected in create_summary_table.py):
+            # 0 contig, 1 genomic_start, 2 genomic_end, 3 strand, 4 query_locus,
+            # 5 sourceFASTA, 6 bitscore, 7 query, 8 qstart, 9 qend,
+            # 10 cdna_seq, 11 peptide_seq, 12 intron_count, 13 idels_frameshifts, 14 inframe_STOPs
+            genewise_cols = [
+                "NC_1",
+                "1",
+                "2001",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_nr": reciprocal_nr,
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_manifest = outdir / "summary_manifest.txt"
+            self.assertTrue(summary_manifest.exists(), "summary_manifest.txt was not created")
+            summary_name = summary_manifest.read_text(encoding="utf-8").strip()
+            self.assertTrue(summary_name, "summary manifest is empty")
+
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("element_type", content)
+            self.assertIn("likely-eve", content)
+
+    def test_create_summary_table_custom_synthetic(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_custom_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-summary-custom-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_rvdb = run_dir / "reciprocal-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "NC_1:2001-4001"
+            assembly_id = "GCF_000000001.1"
+            record_id = "BAV60921.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    record_id,
+                    "99.0",
+                    "667",
+                    "0",
+                    "0",
+                    "1",
+                    "2001",
+                    "1",
+                    "2001",
+                    "0.0",
+                    "1293",
+                    "BAV60921.1|viral polymerase",
+                    "MK",
+                ]
+            )
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "\t".join(
+                    [
+                        "record_id",
+                        "all_taxonomy",
+                        "family",
+                        "viral_order",
+                        "viral_kingdom",
+                    ]
+                )
+                + "\n"
+                + "\t".join(
+                    [
+                        record_id,
+                        "Viruses; Negarnaviricota",
+                        "Bornaviridae",
+                        "Mononegavirales",
+                        "Orthornavirae",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\t{assembly_id}\n", encoding="utf-8")
+            assembly_metadata.write_text(f"TestHost\t{assembly_id}\n", encoding="utf-8")
+
+            # Genewise TSV columns (by position expected in create_summary_table.py):
+            # 0 contig, 1 genomic_start, 2 genomic_end, 3 strand, 4 query_locus,
+            # 5 sourceFASTA, 6 bitscore, 7 query, 8 qstart, 9 qend,
+            # 10 cdna_seq, 11 peptide_seq, 12 intron_count, 13 idels_frameshifts, 14 inframe_STOPs
+            genewise_cols = [
+                "NC_1",
+                "1",
+                "2001",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_manifest = outdir / "summary_manifest.txt"
+            self.assertTrue(summary_manifest.exists(), "summary_manifest.txt was not created")
+            summary_name = summary_manifest.read_text(encoding="utf-8").strip()
+            self.assertTrue(summary_name, "summary manifest is empty")
+
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("element_type", content)
 
 
 if __name__ == "__main__":
