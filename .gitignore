@@ -14,6 +14,7 @@ notes_and_issues.md
 __pycache__/
 *.py[cod]
 .pytest_cache/
+bin/__pycache__/
 
 # Local test scratch outputs
 tests/tmp*/
