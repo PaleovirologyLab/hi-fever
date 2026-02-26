@@ -53,6 +53,7 @@ workflow HIFEVER {
 		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
 		def ftp_ch = null
 		def fetched_assembly_files
+		def assembly_with_accession
 
 	// If user provides own DMND query db (--query_db), create DIAMOND query channel from path
 
