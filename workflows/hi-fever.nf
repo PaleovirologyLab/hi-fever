@@ -10,6 +10,7 @@ include { ASSEMBLY_STATS } from '../modules/assembly_stats.nf'
 include { FETCH_HOST_TAXONOMY } from '../modules/fetch_host_taxonomy.nf'
 include { BUILD_HOST_TAXONOMY_TABLE } from '../modules/process_host_info.nf'
 include { BLASTDB } from '../modules/blast_db.nf'
+include { NORMALIZE_ASSEMBLY_HEADERS } from '../modules/normalize_headers.nf'
 
 // DIAMOND-related process
 include { BUILD_DIAMOND_DB as BUILD_QUERY} from '../modules/build_diamond_db.nf'
@@ -76,6 +77,7 @@ workflow HIFEVER {
 			fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
 		} else {
 			fetched_assembly_files = Channel.fromPath("${params.data_path}/${params.assembly_file}", checkIfExists: true)
+			fetched_assembly_files = NORMALIZE_ASSEMBLY_HEADERS(fetched_assembly_files).normalized_fa
 		}
 
 	// Add assembly identifier as a meta field alongside assembly file path
