@@ -27,6 +27,18 @@ HI-FEVER provides a variety of output information about candidate EVEs, suited t
 
 HI-FEVER is available for use on LINUX, Windows (WSL) and Mac through Conda and Docker. Full documentation can be found in [the wiki](https://github.com/PaleovirologyLab/hi-fever/wiki).
 
+## Tests
+
+Run Python unit tests from the repository root:
+
+`python3 -m unittest discover -s tests -q`
+
+This includes:
+- unit tests for `bin/create_summary_table.py`
+- module-level Nextflow tests for `PARSE_FTP` and `CONCATENATE_PUBLISH_TABLES`
+
+Note: module-level Nextflow tests are automatically skipped if `nextflow` is not available in `PATH`.
+
 ## Test run
 To experiment with and explore HI-FEVER options we provide instructions on running a test dataset below. All data used for this test are available on our Open Science Framework repository [here](https://osf.io/y357r/) in the sample_run folder.
 
