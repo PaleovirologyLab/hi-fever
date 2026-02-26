@@ -1,6 +1,7 @@
 # Test Progress
 
 ## End-to-End Test Added (Stub Run)
+Type: `stub-run`
 
 ### What was added
 - End-to-end stub-run test that exercises the core workflow graph using a minimal local assembly and custom reciprocal database.
@@ -25,6 +26,7 @@ python3 -m unittest discover -s tests -p 'test_workflow_end_to_end.py' -q
 ```
 
 ## FTP Download Test Added (Module Level)
+Type: `stub-run`
 
 ### What was added
 - Module-level test that runs `PARSE_FTP` + `DOWNLOAD_ASSEMBLIES` against a local `file://` FTP fixture.
@@ -38,6 +40,7 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
 ## Forward DIAMOND Test Added (Module Level)
+Type: `real-run` + `stub-run`
 
 ### What was added
 - Stub-run wiring test plus a real-run test using `data/eptesicus_fuscus_genomic_region.fa`
@@ -56,6 +59,7 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
 ## Extract Seqs + Annotate Matches Test Added (Module Level)
+Type: `real-run`
 
 ### What was added
 - Real-run module test that generates a DIAMOND TSV and BLAST DB from the real fixtures,
@@ -72,6 +76,7 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
 ## Genewise Test Added (Module Level)
+Type: `real-run`
 
 ### What was added
 - Real-run module test that derives inputs from the forward + extract tests, then
@@ -89,6 +94,7 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
 ## Create Summary Table (Full) Test Added (Module Level)
+Type: `synthetic`
 
 ### What was added
 - Synthetic module test for `CREATE_SUMMARY_TABLE_FULL` with minimal TSV inputs.
@@ -104,6 +110,23 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
 ## Create Summary Table (Custom) Test Added (Module Level)
+Type: `synthetic`
+
+## Taxonomy Behavior Tests (Full, Synthetic)
+Type: `synthetic`
+
+### What was added
+- Two synthetic tests:
+  - taxonomy present (expects family like `Bornaviridae`)
+  - taxonomy missing (expects `N/A` values)
+
+### Files added/updated
+- `tests/test_modules_nextflow.py`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
 
 ### What was added
 - Synthetic module test for `CREATE_SUMMARY_TABLE_CUSTOM` with minimal TSV inputs.

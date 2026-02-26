@@ -678,6 +678,217 @@ class TestNextflowModules(unittest.TestCase):
             content = summary_path.read_text(encoding="utf-8")
             self.assertIn("element_type", content)
 
+    def test_taxonomy_present_full_synthetic(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_full_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-tax-present-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_nr = run_dir / "reciprocal-nr-matches.dmnd.tsv"
+            reciprocal_rvdb = run_dir / "reciprocal-rvdb-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "NC_1:2001-4001"
+            assembly_id = "GCF_000000001.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    "BAV60921.1",
+                    "99.0",
+                    "667",
+                    "0",
+                    "0",
+                    "1",
+                    "2001",
+                    "1",
+                    "2001",
+                    "0.0",
+                    "1293",
+                    "123",
+                    "TestVirus",
+                    "Viruses",
+                    "Viruses",
+                    "Negarnaviricota",
+                    "RNA-dependent RNA polymerase",
+                ]
+            )
+            reciprocal_nr.write_text(reciprocal_row + "\n", encoding="utf-8")
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "\t".join(
+                    [
+                        "123",
+                        "Viruses",
+                        "Viruses",
+                        "Negarnaviricota",
+                        "Monjiviricetes",
+                        "Mononegavirales",
+                        "Bornaviridae",
+                        "Orthobornavirus",
+                        "TestVirus",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\t{assembly_id}\n", encoding="utf-8")
+            assembly_metadata.write_text(f"TestHost\t{assembly_id}\n", encoding="utf-8")
+
+            genewise_cols = [
+                "NC_1",
+                "1",
+                "2001",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_nr": reciprocal_nr,
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_manifest = outdir / "summary_manifest.txt"
+            summary_name = summary_manifest.read_text(encoding="utf-8").strip()
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("Bornaviridae", content)
+
+    def test_taxonomy_missing_full_synthetic(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_full_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-tax-missing-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_nr = run_dir / "reciprocal-nr-matches.dmnd.tsv"
+            reciprocal_rvdb = run_dir / "reciprocal-rvdb-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "NC_1:2001-4001"
+            assembly_id = "GCF_000000001.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    "BAV60921.1",
+                    "99.0",
+                    "667",
+                    "0",
+                    "0",
+                    "1",
+                    "2001",
+                    "1",
+                    "2001",
+                    "0.0",
+                    "1293",
+                    "123",
+                    "TestVirus",
+                    "Viruses",
+                    "Viruses",
+                    "Negarnaviricota",
+                    "RNA-dependent RNA polymerase",
+                ]
+            )
+            reciprocal_nr.write_text(reciprocal_row + "\n", encoding="utf-8")
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "\t".join(
+                    [
+                        "123",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                        "N/A",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\t{assembly_id}\n", encoding="utf-8")
+            assembly_metadata.write_text(f"TestHost\t{assembly_id}\n", encoding="utf-8")
+
+            genewise_cols = [
+                "NC_1",
+                "1",
+                "2001",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_nr": reciprocal_nr,
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_manifest = outdir / "summary_manifest.txt"
+            summary_name = summary_manifest.read_text(encoding="utf-8").strip()
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("element_type", content)
+            self.assertIn("nan", content)
+
 
 if __name__ == "__main__":
     unittest.main()
