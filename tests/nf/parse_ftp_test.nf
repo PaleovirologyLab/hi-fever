@@ -7,6 +7,7 @@ workflow {
     parsed = PARSE_FTP(ftp_ch)
 
     parsed
+        .flatten()
         .map { it.getName() }
         .collectFile(name: 'parsed_manifest.txt', newLine: true, storeDir: params.outdir)
 }
