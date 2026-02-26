@@ -55,6 +55,22 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
+## Extract Seqs + Annotate Matches Test Added (Module Level)
+
+### What was added
+- Real-run module test that generates a DIAMOND TSV and BLAST DB from the real fixtures,
+  then runs `EXTRACT_SEQS_ANNOTATE_MATCHES`.
+- The test normalizes the assembly header locally so `blastdbcmd` can resolve seqids.
+
+### Files added/updated
+- `tests/nf/extract_seqs_test.nf`
+- `tests/test_modules_nextflow.py`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
+
 ## TODO — Remaining Tests to Implement
 - End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
 - Reciprocal mode tests:
@@ -65,13 +81,12 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
   - With `--email`.
   - With `--allow_missing_taxonomy` fallback.
 - Module-level tests:
-  - `EXTRACT_SEQS_ANNOTATE_MATCHES`.
   - `GENEWISE` output sanity.
   - `CREATE_SUMMARY_TABLE_*` integration.
 - Output schema regression tests:
   - Summary table columns.
   - `sql/` output filenames.
 - Error handling tests:
-  - Invalid `--assembly_file` / empty `--ftp_file`.
+  - Invalid `--assembly_file` / empty `--ftp_file`do 
   - Unsupported reciprocal DB extension.
   - Missing required params.
