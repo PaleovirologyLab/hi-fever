@@ -37,6 +37,24 @@ python3 -m unittest discover -s tests -p 'test_workflow_end_to_end.py' -q
 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
+## Forward DIAMOND Test Added (Module Level)
+
+### What was added
+- Stub-run wiring test plus a real-run test using `data/eptesicus_fuscus_genomic_region.fa`
+  and `data/endonous_borna_L_protein.fasta`.
+- Real-run test builds a small DIAMOND DB on the fly; skipped if `diamond` or `seqkit`
+  are not in `PATH`.
+
+### Files added/updated
+- `tests/nf/forward_diamond_test.nf`
+- `tests/test_modules_nextflow.py`
+- `modules/forward_diamond.nf` (added `stub` and explicit `script:`)
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
+
 ## TODO — Remaining Tests to Implement
 - End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
 - Reciprocal mode tests:
@@ -47,7 +65,6 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
   - With `--email`.
   - With `--allow_missing_taxonomy` fallback.
 - Module-level tests:
-  - `FORWARD_DIAMOND` (fixture + schema assertions).
   - `EXTRACT_SEQS_ANNOTATE_MATCHES`.
   - `GENEWISE` output sanity.
   - `CREATE_SUMMARY_TABLE_*` integration.

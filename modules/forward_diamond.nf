@@ -12,8 +12,14 @@ process FORWARD_DIAMOND {
     output:
     tuple val(meta), path("*.dmnd.tsv")
 
+    stub:
+    """
+    printf "contig_1\t1\t3\tprotein_1\t1\t3\t1\t0.0\t50.0\t99.0\t3\t0\t0\n" > "${meta.id}_forward-matches-raw.dmnd.tsv"
+    """
+
     //publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*.dmnd.tsv"
 
+    script:
     """
 
     chunks="${meta.id}_chunks.fna.gz"

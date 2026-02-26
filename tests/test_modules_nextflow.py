@@ -7,6 +7,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 NEXTFLOW_BIN = shutil.which("nextflow")
+DIAMOND_BIN = shutil.which("diamond")
+SEQKIT_BIN = shutil.which("seqkit")
 
 
 @unittest.skipIf(NEXTFLOW_BIN is None, "nextflow is not installed in PATH")
@@ -114,6 +116,74 @@ class TestNextflowModules(unittest.TestCase):
             self.assertTrue(manifest.exists(), "downloaded_manifest.txt was not created")
             names = {line.strip() for line in manifest.read_text(encoding="utf-8").splitlines() if line.strip()}
             self.assertEqual(names, {assembly_name})
+
+    def test_forward_diamond_module(self):
+        script = REPO_ROOT / "tests" / "nf" / "forward_diamond_test.nf"
+        fixture_dir = REPO_ROOT / "tests" / "fixtures" / "e2e"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-forward-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            self.run_nf(
+                script,
+                {
+                    "assembly": fixture_dir / "assembly.fna",
+                    "query_db": fixture_dir / "query.fa",
+                    "outdir": outdir,
+                },
+                run_dir,
+                extra_args=["-stub-run"],
+            )
+
+            manifest = outdir / "forward_manifest.txt"
+            self.assertTrue(manifest.exists(), "forward_manifest.txt was not created")
+            names = {line.strip() for line in manifest.read_text(encoding="utf-8").splitlines() if line.strip()}
+            self.assertEqual(names, {"assembly_forward-matches-raw.dmnd.tsv"})
+
+    @unittest.skipIf(DIAMOND_BIN is None or SEQKIT_BIN is None, "diamond/seqkit not installed in PATH")
+    def test_forward_diamond_module_real(self):
+        script = REPO_ROOT / "tests" / "nf" / "forward_diamond_test.nf"
+        assembly = REPO_ROOT / "tests" / "fixtures" / "real" / "eptesicus_fuscus_genomic_region.fa"
+        query = REPO_ROOT / "tests" / "fixtures" / "real" / "endogenous_borna_L_protein.fasta"
+
+        if not assembly.exists() or not query.exists():
+            self.skipTest("Required real-run fixtures not found in data/")
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-forward-real-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            db_prefix = run_dir / "query_db"
+            subprocess.run(
+                [DIAMOND_BIN, "makedb", "--in", str(query), "-d", str(db_prefix)],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+            db_file = Path(f"{db_prefix}.dmnd")
+            self.assertTrue(db_file.exists(), "diamond DB was not created")
+
+            self.run_nf(
+                script,
+                {
+                    "assembly": assembly,
+                    "query_db": db_file,
+                    "outdir": outdir,
+                    "diamond_forks": 1,
+                    "chunk_size": 10000,
+                    "diamond_mode": "fast",
+                    "diamond_max_target_seqs": 5,
+                },
+                run_dir,
+            )
+
+            matches = list((run_dir / "work").rglob("*_forward-matches-raw.dmnd.tsv"))
+            self.assertTrue(matches, "forward matches file was not created")
+            content = matches[0].read_text(encoding="utf-8").strip()
+            self.assertTrue(content, "forward matches file is empty")
 
 
 if __name__ == "__main__":
