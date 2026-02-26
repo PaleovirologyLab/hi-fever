@@ -71,6 +71,23 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
+## Genewise Test Added (Module Level)
+
+### What was added
+- Real-run module test that derives inputs from the forward + extract tests, then
+  runs `GENEWISE` on the resulting pair/FASTA/coords files.
+- The test is skipped if `genewise`, `bedtools`, `seqtk`, `makeblastdb`,
+  `stopConvertAndCount.py`, or `translateCodingSequence.py` are not in `PATH`.
+
+### Files added/updated
+- `tests/nf/genewise_test.nf`
+- `tests/test_modules_nextflow.py`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
+
 ## TODO — Remaining Tests to Implement
 - End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
 - Reciprocal mode tests:
@@ -81,7 +98,6 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
   - With `--email`.
   - With `--allow_missing_taxonomy` fallback.
 - Module-level tests:
-  - `GENEWISE` output sanity.
   - `CREATE_SUMMARY_TABLE_*` integration.
 - Output schema regression tests:
   - Summary table columns.
