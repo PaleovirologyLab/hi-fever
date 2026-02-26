@@ -10,12 +10,19 @@ process ASSEMBLY_STATS {
 	output:
 	stdout
 
+	script:
 	"""
 
 	stats.sh in=${assembly} format=3 addname= | \
 	grep -v n_scaffolds | \
 	sed 's/\\/.*\\///g; s/_genomic.fna.gz//'
 
+	"""
+
+	stub:
+	"""
+	base="\$(basename "${assembly}")"
+	echo -e "\${base}\t0\t0"
 	"""
 
 }

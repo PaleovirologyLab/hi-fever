@@ -9,6 +9,7 @@ process DOWNLOAD_ASSEMBLIES {
 		output:
 		path "*genomic.fna.gz"
 
+		script:
 		"""
 
 		# Downloads and checks assembly file for corruption, re-attempts if md5 check fails
@@ -43,5 +44,14 @@ process DOWNLOAD_ASSEMBLIES {
 
 				done < ${ftp_dir}
 
+		"""
+
+		stub:
+		"""
+		while read line
+			do
+				assemblyFile="\$(echo \"\$line\" | sed 's/^.*\\///')_genomic.fna.gz"
+				printf ">stub\\nATG\\n" | gzip -c > "\$assemblyFile"
+			done < ${ftp_dir}
 		"""
 }

@@ -23,11 +23,22 @@
 ```
 python3 -m unittest discover -s tests -p 'test_workflow_end_to_end.py' -q
 ```
---- 
+
+## FTP Download Test Added (Module Level)
+
+### What was added
+- Module-level test that runs `PARSE_FTP` + `DOWNLOAD_ASSEMBLIES` against a local `file://` FTP fixture.
+
+### Files added
+- `tests/nf/ftp_download_test.nf`
+
+### Test command
+```
+python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
 
 ## TODO — Remaining Tests to Implement
 - End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
-- FTP mode path test (parse + download + metadata path, with stubs or fixtures).
 - Reciprocal mode tests:
   - Custom reciprocal FASTA (build dmnd).
   - Custom reciprocal dmnd (skip build).

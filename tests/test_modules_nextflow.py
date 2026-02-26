@@ -11,7 +11,7 @@ NEXTFLOW_BIN = shutil.which("nextflow")
 
 @unittest.skipIf(NEXTFLOW_BIN is None, "nextflow is not installed in PATH")
 class TestNextflowModules(unittest.TestCase):
-    def run_nf(self, script: Path, params: dict, run_dir: Path):
+    def run_nf(self, script: Path, params: dict, run_dir: Path, extra_args=None):
         cmd = [
             NEXTFLOW_BIN,
             "run",
@@ -21,6 +21,8 @@ class TestNextflowModules(unittest.TestCase):
             "-work-dir",
             str(run_dir / "work"),
         ]
+        if extra_args:
+            cmd.extend(extra_args)
         for key, value in params.items():
             cmd.extend([f"--{key}", str(value)])
 
@@ -85,6 +87,33 @@ class TestNextflowModules(unittest.TestCase):
             merged = outdir / "sql" / "merged.tsv"
             self.assertTrue(merged.exists(), "merged.tsv was not published")
             self.assertEqual(merged.read_text(encoding="utf-8"), "header1\na1\nb2\n")
+
+    def test_download_assemblies_module(self):
+        script = REPO_ROOT / "tests" / "nf" / "ftp_download_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-ftp-download-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            assembly_name = "GCF_000000000.1_genomic.fna.gz"
+            ftp_list = run_dir / "ftp_list.txt"
+            ftp_list.write_text("ftp://example.org/GCF_000000000.1\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "ftp_input": ftp_list,
+                    "outdir": outdir,
+                },
+                run_dir,
+                extra_args=["-stub-run"],
+            )
+
+            manifest = outdir / "downloaded_manifest.txt"
+            self.assertTrue(manifest.exists(), "downloaded_manifest.txt was not created")
+            names = {line.strip() for line in manifest.read_text(encoding="utf-8").splitlines() if line.strip()}
+            self.assertEqual(names, {assembly_name})
 
 
 if __name__ == "__main__":
