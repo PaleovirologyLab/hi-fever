@@ -1,10 +1,10 @@
 # Test Progress
 
-## End-to-End Test Added (Stub Run)
+## End-to-End Tests Added (Stub Run)
 Type: `stub-run`
 
 ### What was added
-- End-to-end stub-run test that exercises the core workflow graph using a minimal local assembly and custom reciprocal database.
+- End-to-end stub-run tests that exercise the workflow graph using minimal local fixtures for reciprocal routing and validation behavior.
 
 ### Files added
 - `tests/test_workflow_end_to_end.py`
@@ -141,25 +141,8 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
 
-## TODO — Remaining Tests to Implement
-- End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
-- Reciprocal mode tests:
-  - Custom reciprocal FASTA (build dmnd).
-  - Custom reciprocal dmnd (skip build).
-  - Full reciprocal NR+RVDB path.
-- Taxonomy behavior:
-  - With `--email`.
-  - With `--allow_missing_taxonomy` fallback.
-- Output schema regression tests:
-  - Summary table columns.
-  - `sql/` output filenames.
-- Error handling tests:
-  - Invalid `--assembly_file` / empty `--ftp_file`do 
-  - Unsupported reciprocal DB extension.
-  - Missing required params.
-
 ## Reciprocal Search Testing Plan (Working Notes)
-Status: `planned`
+Status: `in-progress`
 
 ### Scope to cover
 - Module behavior for `SINGLE_RECIPROCAL_DIAMOND` (custom reciprocal mode).
@@ -185,12 +168,12 @@ Status: `planned`
   - Emits `mixed_hits.txt`, `best_pairs.txt`, `best_hits.fasta`.
   - `mixed_hits.txt` includes `forward`, `reciprocal-nr`, and `reciprocal-rvdb` labels.
 - Workflow branching:
-  - `--custom_reciprocal true` routes to `SINGLE_RECIPROCAL_DIAMOND`.
-  - `--custom_reciprocal false` routes to `FULL_RECIPROCAL_DIAMOND`.
+  - `--custom_reciprocal true` routes to `SINGLE_RECIPROCAL_DIAMOND`. [done]
+  - `--custom_reciprocal false` routes to `FULL_RECIPROCAL_DIAMOND`. [done]
   - Custom DB extension behavior:
-    - `.dmnd` uses DB directly.
-    - `.fa/.fasta/.fna` triggers `BUILD_RECIPROCAL`.
-    - Unsupported extension fails with clear error.
+    - `.dmnd` uses DB directly. [done]
+    - `.fa/.fasta/.fna` triggers `BUILD_RECIPROCAL`. [partially done: `.fa` covered]
+    - Unsupported extension fails with clear error. [done]
 - Taxonomy gating:
   - Custom reciprocal + `--email` executes taxonomy fetch.
   - Custom reciprocal + no email + `--allow_missing_taxonomy true` uses placeholder taxonomy.
@@ -225,3 +208,62 @@ Type: `real-run` (heavy, optional)
 ```bash
 HIFEVER_RUN_RECIPROCAL_INTEGRATION=1 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
 ```
+
+## Custom Reciprocal Input Branching Tests Added (Workflow E2E, Stub)
+Type: `stub-run` + trace assertions
+
+### What was added
+- Three workflow-level tests in `tests/test_workflow_end_to_end.py` to validate custom reciprocal input branching:
+  - FASTA input (`reciprocal.fa`): confirms `BUILD_RECIPROCAL` runs and `SINGLE_RECIPROCAL_DIAMOND` runs.
+  - DMND input (`reciprocal.dmnd`): confirms `BUILD_RECIPROCAL` is skipped and `SINGLE_RECIPROCAL_DIAMOND` runs.
+  - Unsupported extension (`reciprocal.txt`): confirms workflow fails with unsupported-extension validation error.
+- Added fixture file:
+  - `tests/fixtures/e2e/reciprocal.dmnd` (stub placeholder for routing test only).
+
+### Files added/updated
+- `tests/test_workflow_end_to_end.py`
+- `tests/fixtures/e2e/reciprocal.dmnd`
+- `modules/normalize_headers.nf` (compile fix to unblock workflow-level tests)
+
+### Test command
+```bash
+python3 -m unittest discover -s tests -p 'test_workflow_end_to_end.py' -q
+```
+
+## Full Reciprocal Routing Test Added (`custom_reciprocal=false`)
+Type: `stub-run` + trace assertions
+
+### What was added
+- Workflow-level test to confirm that when `custom_reciprocal` is not set (false path):
+  - `FULL_RECIPROCAL_DIAMOND` runs.
+  - `SINGLE_RECIPROCAL_DIAMOND` does not run.
+- Test uses a temporary `data/` directory containing:
+  - local fixture `assembly.fna` and `query.fa`
+  - symlinks to default mini reciprocal databases in repo `data/`:
+    - `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd`
+    - `MINI_rvdbv28_wtaxa.dmnd`
+
+### Files updated
+- `tests/test_workflow_end_to_end.py`
+
+### Test command
+```bash
+python3 -m unittest discover -s tests -p 'test_workflow_end_to_end.py' -q
+```
+
+## TODO — Remaining Tests to Implement
+- End-to-end run through `main.nf` after fixing `VERIFY` for local mode.
+- Reciprocal behavior:
+  - Zero-hit handling in custom reciprocal mode (explicit expected behavior).
+  - Best-hit selection/ranking semantics (`best_pairs`, `best_hits`).
+  - Mixed-hit content assertions (`forward`, `reciprocal-nr`, `reciprocal-rvdb` labels).
+  - Additional extension variants (`.fna`, `.fasta`) in custom reciprocal branch tests.
+- Taxonomy behavior:
+  - With `--email`.
+  - With `--allow_missing_taxonomy` fallback.
+- Output schema regression tests:
+  - Summary table columns.
+  - Reciprocal output table columns and `sql/` output filenames.
+- Error handling tests:
+  - Invalid `--assembly_file` / empty `--ftp_file`.
+  - Missing required params.
