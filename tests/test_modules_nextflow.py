@@ -19,6 +19,7 @@ REPO_BIN = REPO_ROOT / "bin"
 LOCAL_STOP_CONVERT = REPO_BIN / "stopConvertAndCount.py"
 LOCAL_TRANSLATE_CDS = REPO_BIN / "translateCodingSequence.py"
 CREATE_SUMMARY_BIN = REPO_BIN / "create_summary_table.py"
+RECIPROCAL_INTEGRATION_FLAG = "HIFEVER_RUN_RECIPROCAL_INTEGRATION"
 
 
 @unittest.skipIf(NEXTFLOW_BIN is None, "nextflow is not installed in PATH")
@@ -302,6 +303,133 @@ class TestNextflowModules(unittest.TestCase):
                 manifest = outdir / name
                 self.assertTrue(manifest.exists(), f"{name} was not created")
                 self.assertTrue(manifest.read_text(encoding="utf-8").strip(), f"{name} is empty")
+
+    @unittest.skipIf(
+        DIAMOND_BIN is None or SEQKIT_BIN is None or MAKEBLASTDB_BIN is None,
+        "diamond/seqkit/makeblastdb not installed in PATH",
+    )
+    @unittest.skipUnless(
+        os.environ.get(RECIPROCAL_INTEGRATION_FLAG) == "1",
+        f"Set {RECIPROCAL_INTEGRATION_FLAG}=1 to run heavy reciprocal integration test",
+    )
+    def test_full_reciprocal_module_real_mini_dbs_positive_control(self):
+        forward_script = REPO_ROOT / "tests" / "nf" / "forward_diamond_test.nf"
+        extract_script = REPO_ROOT / "tests" / "nf" / "extract_seqs_test.nf"
+        reciprocal_script = REPO_ROOT / "tests" / "nf" / "full_reciprocal_test.nf"
+        assembly = REPO_ROOT / "tests" / "fixtures" / "real" / "eptesicus_fuscus_genomic_region.fa"
+        query = REPO_ROOT / "tests" / "fixtures" / "real" / "endogenous_borna_L_protein.fasta"
+        reciprocal_nr_db = REPO_ROOT / "data" / "MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd"
+        reciprocal_rvdb_db = REPO_ROOT / "data" / "MINI_rvdbv28_wtaxa.dmnd"
+
+        if not assembly.exists() or not query.exists():
+            self.skipTest("Required real-run fixtures not found in tests/fixtures/real/")
+        if not reciprocal_nr_db.exists() or not reciprocal_rvdb_db.exists():
+            self.skipTest("Required MINI reciprocal databases not found in data/")
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-reciprocal-real-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            normalized_assembly = run_dir / "assembly_normalized.fa"
+            with assembly.open("r", encoding="utf-8") as in_handle, normalized_assembly.open(
+                "w", encoding="utf-8"
+            ) as out_handle:
+                for line in in_handle:
+                    if line.startswith(">"):
+                        header = line[1:].strip().split()[0]
+                        header = header.rsplit(":", 1)[0] if ":" in header else header
+                        out_handle.write(f">{header}\n")
+                    else:
+                        out_handle.write(line)
+
+            db_prefix = run_dir / "query_db"
+            subprocess.run(
+                [DIAMOND_BIN, "makedb", "--in", str(query), "-d", str(db_prefix)],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+            db_file = Path(f"{db_prefix}.dmnd")
+            self.assertTrue(db_file.exists(), "query diamond DB was not created")
+
+            self.run_nf(
+                forward_script,
+                {
+                    "assembly": normalized_assembly,
+                    "query_db": db_file,
+                    "outdir": outdir,
+                    "diamond_forks": 1,
+                    "chunk_size": 10000,
+                    "diamond_mode": "fast",
+                    "diamond_max_target_seqs": 5,
+                },
+                run_dir,
+            )
+
+            match_files = list((run_dir / "work").rglob("*_forward-matches-raw.dmnd.tsv"))
+            self.assertTrue(match_files, "forward matches file was not created")
+            diamond_tsv = match_files[0]
+            self.assertTrue(diamond_tsv.read_text(encoding="utf-8").strip(), "forward matches file is empty")
+
+            subprocess.run(
+                [
+                    MAKEBLASTDB_BIN,
+                    "-in",
+                    str(normalized_assembly),
+                    "-out",
+                    str(run_dir / "assembly_db"),
+                    "-dbtype",
+                    "nucl",
+                    "-parse_seqids",
+                ],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+            nsq = run_dir / "assembly_db.nsq"
+            self.assertTrue(nsq.exists(), "assembly BLAST DB was not created")
+
+            self.run_nf(
+                extract_script,
+                {
+                    "meta_id": "eptesicus_fuscus_genomic_region",
+                    "diamond_tsv": diamond_tsv,
+                    "assembly_db": nsq,
+                    "outdir": outdir,
+                    "interval": 1000,
+                    "flank": 3000,
+                },
+                run_dir,
+            )
+
+            forward_matches = next((run_dir / "work").rglob("*_forward_matches.dmnd.annot.tsv"), None)
+            strict_fa = next((run_dir / "work").rglob("*_strict.fasta"), None)
+            self.assertTrue(forward_matches and forward_matches.exists(), "annotated forward matches not found")
+            self.assertTrue(strict_fa and strict_fa.exists(), "strict loci fasta not found")
+            self.assertTrue(forward_matches.read_text(encoding="utf-8").strip(), "annotated forward matches are empty")
+
+            self.run_nf(
+                reciprocal_script,
+                {
+                    "reciprocal_nr_db": reciprocal_nr_db,
+                    "reciprocal_rvdb_db": reciprocal_rvdb_db,
+                    "loci_merged_fa": strict_fa,
+                    "forward_matches": forward_matches,
+                    "query_proteins": query,
+                    "outdir": outdir,
+                    "diamond_mode": "fast",
+                    "diamond_matrix": "BLOSUM62",
+                },
+                run_dir,
+            )
+
+            nr_matches = next((run_dir / "work").rglob("reciprocal-nr-matches.dmnd.tsv"), None)
+            rvdb_matches = next((run_dir / "work").rglob("reciprocal-rvdb-matches.dmnd.tsv"), None)
+            self.assertTrue(nr_matches and nr_matches.exists(), "reciprocal NR matches file not found")
+            self.assertTrue(rvdb_matches and rvdb_matches.exists(), "reciprocal RVDB matches file not found")
+            self.assertTrue(nr_matches.read_text(encoding="utf-8").strip(), "reciprocal NR matches are empty")
+            self.assertTrue(rvdb_matches.read_text(encoding="utf-8").strip(), "reciprocal RVDB matches are empty")
 
     @unittest.skipIf(
         DIAMOND_BIN is None

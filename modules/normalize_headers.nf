@@ -18,14 +18,15 @@ process NORMALIZE_ASSEMBLY_HEADERS {
         reader="cat"
     fi
 
-    \$reader "\$infile" | awk '
+    mapfile="${assembly.simpleName}_header_map.tsv"
+    \$reader "\$infile" | awk -v mapfile="\$mapfile" '
         BEGIN { OFS="\\t" }
         /^>/ {
             orig = substr(\$0, 2)
             clean = orig
             sub(/ .*/, "", clean)
-            sub(/:[0-9]+-[0-9]+$/, "", clean)
-            print orig, clean >> "'"${assembly.simpleName}_header_map.tsv"'"
+            sub(/:[0-9]+-[0-9]+\$/, "", clean)
+            print orig, clean >> mapfile
             print ">" clean
             next
         }

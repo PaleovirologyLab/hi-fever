@@ -157,3 +157,71 @@ python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
   - Invalid `--assembly_file` / empty `--ftp_file`do 
   - Unsupported reciprocal DB extension.
   - Missing required params.
+
+## Reciprocal Search Testing Plan (Working Notes)
+Status: `planned`
+
+### Scope to cover
+- Module behavior for `SINGLE_RECIPROCAL_DIAMOND` (custom reciprocal mode).
+- Module behavior for `FULL_RECIPROCAL_DIAMOND` (NR + RVDB mode).
+- Workflow branch selection and validation logic in `workflows/hi-fever.nf`.
+- Taxonomy fallback/fail behavior tied to reciprocal paths.
+
+### Test logic to follow
+1. Start with `stub-run` tests to verify branch wiring and output file contracts.
+2. Add synthetic tests for ranking/dedup semantics (`best_*` and `mixed_hits` behavior).
+3. Add one minimal real-tool integration test (skip when tools are missing) to confirm command compatibility.
+4. Keep fixtures small and explicit so failures isolate pipeline logic.
+5. Assert semantic correctness in addition to file existence.
+
+### Detailed checklist
+- `SINGLE_RECIPROCAL_DIAMOND`:
+  - Emits `reciprocal-matches.dmnd.tsv`, `reciprocal_hits.txt`,
+    `best_reciprocal_hits.txt`, `reciprocal_seqs.fasta`.
+  - `best_reciprocal_hits.txt` contains one best hit per query locus.
+  - `reciprocal_hits.txt` retains all reciprocal hits.
+- `FULL_RECIPROCAL_DIAMOND`:
+  - Emits `reciprocal-nr-matches.dmnd.tsv` and `reciprocal-rvdb-matches.dmnd.tsv`.
+  - Emits `mixed_hits.txt`, `best_pairs.txt`, `best_hits.fasta`.
+  - `mixed_hits.txt` includes `forward`, `reciprocal-nr`, and `reciprocal-rvdb` labels.
+- Workflow branching:
+  - `--custom_reciprocal true` routes to `SINGLE_RECIPROCAL_DIAMOND`.
+  - `--custom_reciprocal false` routes to `FULL_RECIPROCAL_DIAMOND`.
+  - Custom DB extension behavior:
+    - `.dmnd` uses DB directly.
+    - `.fa/.fasta/.fna` triggers `BUILD_RECIPROCAL`.
+    - Unsupported extension fails with clear error.
+- Taxonomy gating:
+  - Custom reciprocal + `--email` executes taxonomy fetch.
+  - Custom reciprocal + no email + `--allow_missing_taxonomy true` uses placeholder taxonomy.
+  - Custom reciprocal + no email + no allow-missing fails with expected error.
+  - Full reciprocal + missing taxonomy table + allow-missing true uses placeholder taxonomy.
+- Full reciprocal + missing taxonomy table + allow-missing false fails.
+
+### Notes
+- Determinism/regression checks are useful: repeated runs should keep `best_pairs` and
+  selected `best_hits` stable for the same input.
+- Empty-hit behavior should be explicit:
+  - For user custom reciprocal DBs, no-hit runs can be valid and should not be treated as a failure by default.
+  - Tests should assert expected behavior for empty outputs where appropriate.
+
+## Reciprocal Positive Control Test Added (Real Integration, Gated)
+Type: `real-run` (heavy, optional)
+
+### What was added
+- Positive-control integration test that derives loci from:
+  - `tests/fixtures/real/eptesicus_fuscus_genomic_region.fa` (forward + extract)
+  - `tests/fixtures/real/endogenous_borna_L_protein.fasta` (query proteins)
+- Then runs `FULL_RECIPROCAL_DIAMOND` against:
+  - `data/MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd`
+  - `data/MINI_rvdbv28_wtaxa.dmnd`
+- Asserts reciprocal outputs for both NR and RVDB are present and non-empty.
+
+### Files added/updated
+- `tests/nf/full_reciprocal_test.nf`
+- `tests/test_modules_nextflow.py`
+
+### How to run
+```bash
+HIFEVER_RUN_RECIPROCAL_INTEGRATION=1 python3 -m unittest discover -s tests -p 'test_modules_nextflow.py' -q
+```
