@@ -13,7 +13,7 @@
 - Reconstructs the predicted EVE protein based on its closest modern match
 - Harnesses parallelisation to optimise compute resources
 - Scales from laptop to cluster
-- Conda and Docker compatible
+- Conda, Pixi, and Apptainer compatible
 - LINUX, Windows and MAC compatible
 
 HI-FEVER provides a variety of output information about candidate EVEs, suited to many downstream purposes. Outputs include:
@@ -25,7 +25,13 @@ HI-FEVER provides a variety of output information about candidate EVEs, suited t
 
 ## Installation and usage
 
-HI-FEVER is available for use on LINUX, Windows (WSL) and Mac through Conda and Docker. Full documentation can be found in [the wiki](https://github.com/PaleovirologyLab/hi-fever/wiki).
+HI-FEVER is available for use on LINUX, Windows (WSL), and Mac. The repository currently supports:
+- bootstrap/setup via Conda or Pixi
+- pipeline execution via Nextflow `-profile conda` or `-profile apptainer`
+
+Dockerfiles are present in `docker/`, but Docker is not currently configured as a first-class Nextflow profile in `conf/containers.config`.
+
+Full documentation can be found in [the wiki](https://github.com/PaleovirologyLab/hi-fever/wiki).
 
 ## Tests
 
@@ -35,9 +41,10 @@ Run Python unit tests from the repository root:
 
 This includes:
 - unit tests for `bin/create_summary_table.py`
-- module-level Nextflow tests for `PARSE_FTP` and `CONCATENATE_PUBLISH_TABLES`
+- workflow-level stub-run tests for local assembly mode and reciprocal routing
+- module-level Nextflow tests for parsing, downloads, DIAMOND, extraction, Genewise, and summary-table generation
 
-Note: module-level Nextflow tests are automatically skipped if `nextflow` is not available in `PATH`.
+Note: Nextflow-based tests are automatically skipped if `nextflow` is not available in `PATH`. Some environment-specific tests are also skipped when required tools such as `apptainer` are not installed.
 
 ## Test run
 To experiment with and explore HI-FEVER options we provide instructions on running a test dataset below. All data used for this test are available on our Open Science Framework repository [here](https://osf.io/y357r/) in the sample_run folder.
@@ -57,11 +64,11 @@ tar -xf MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz
 tar -xf MINI_rvdbv28_wtaxa.dmnd.tar.xz
 ```
 
-If using conda, activate the environment. If using Docker on Mac (arm64), open a terminal tab within Docker desktop. If using Docker on LINUX add the -with_docker flag to the run command below.
+If using Conda, activate the environment and run with `-profile conda`. If using Pixi, run the workflow from within the Pixi environment or via Pixi tasks. For containerized execution, use `-profile apptainer`.
 
 Run the HI-FEVER workflow from the root hi-fever folder with the following command (replacing the email address):
 
-`nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file human_T2T_ftp.txt --email john.smith@email.com`
+`nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file human_T2T_ftp.txt --email john.smith@email.com -profile conda`
 
 ### Assembly input modes
 
@@ -72,15 +79,16 @@ HI-FEVER supports two host assembly input modes:
 
 Local mode example:
 
-`nextflow main.nf --assembly_mode local --assembly_file "assemblies/*.fna.gz" --query_file_aa 20_per_fam_no_retro.fasta --custom_reciprocal --custom_reciprocal_db custom.dmnd --allow_missing_taxonomy true`
+`nextflow main.nf --assembly_mode local --assembly_file "assemblies/*.fna.gz" --query_file_aa 20_per_fam_no_retro.fasta --custom_reciprocal --custom_reciprocal_db custom.dmnd --email john.smith@email.com -profile conda`
 
 Optional in local mode:
 * `--assembly_metadata_file` for a tab-separated file with two columns: `hostName`, `assembly_id`.
+* `--allow_missing_taxonomy true` only if you explicitly want the workflow to continue without taxonomy lookup.
 
 If taxonomy/metadata files are not available in local mode:
 * Core locus discovery, reciprocal search, and genewise reconstruction still run.
 * Host metadata fields in summary outputs default to `unknown_host` unless metadata is provided.
-* Taxonomy-based annotations/classification may be reduced (more `uncertain` classifications).
+* Taxonomy-based annotations/classification may be reduced (more `uncertain` classifications), but this degraded mode now requires `--allow_missing_taxonomy true`.
 
 This will generate a folder called `output` with two subfolders: `accessory_fastas` and `sql`. These outputs are detailed on our [Usage page](https://github.com/PaleovirologyLab/hi-fever/wiki/Usage). For a guide on how to interpret these results, see our [Interpreting results page](https://github.com/PaleovirologyLab/hi-fever/wiki/Interpreting-results)
 

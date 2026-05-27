@@ -1,6 +1,7 @@
 process NORMALIZE_ASSEMBLY_HEADERS {
 
     tag "${assembly}"
+    container 'oras://community.wave.seqera.io/library/diamond_seqkit_seqtk:6fc81cc10da8e7e4'
     conda 'bioconda::seqkit=2.9.0'
 
     input:
@@ -10,6 +11,7 @@ process NORMALIZE_ASSEMBLY_HEADERS {
     path "${assembly.simpleName}_normalized.fna", emit: normalized_fa
     path "${assembly.simpleName}_header_map.tsv", emit: header_map
 
+    script:
     """
     infile="${assembly}"
     if [[ "${assembly}" == *.gz ]]; then

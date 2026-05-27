@@ -56,9 +56,33 @@ workflow VERIFY {
 	// Check local assembly file extension when local mode is used
 
 		if (assembly_mode == 'local') {
-			def local_assemblies = Channel.fromPath("${params.data_path}/${params.assembly_file}", checkIfExists: true).toList().getVal()
-			if (local_assemblies.isEmpty()) {
-				error ("ERROR: No assembly files matched '${params.data_path}/${params.assembly_file}'.")
+			def assembly_pattern = params.assembly_file.toString()
+			def data_root = file(params.data_path.toString())
+			def local_assemblies = []
+			def has_glob = assembly_pattern =~ /[*?\[\]\{\}]/
+
+			if (has_glob) {
+				def root_path = data_root.toPath()
+				def matcher = java.nio.file.FileSystems.default.getPathMatcher("glob:${assembly_pattern}")
+				def path_stream = java.nio.file.Files.walk(root_path)
+				try {
+					path_stream.each { path ->
+						if (java.nio.file.Files.isRegularFile(path) && matcher.matches(root_path.relativize(path))) {
+							local_assemblies << path.toFile()
+						}
+					}
+				} finally {
+					path_stream.close()
+				}
+			} else {
+				def local_assembly = file("${params.data_path}/${assembly_pattern}")
+				if (local_assembly.exists()) {
+					local_assemblies << local_assembly
+				}
+			}
+
+			if (!local_assemblies) {
+				error ("ERROR: No assembly files matched '${params.data_path}/${assembly_pattern}'.")
 			}
 
 			def assembly_extensions = ['fa', 'fna', 'fasta', 'gz']
