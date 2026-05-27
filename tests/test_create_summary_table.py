@@ -18,6 +18,14 @@ cst = _load_module()
 
 
 class TestCreateSummaryTable(unittest.TestCase):
+    def test_canonical_assembly_id_extracts_accession_from_filename(self):
+        value = "/tmp/GCF_000000001.1_genomic.fna.gz"
+        self.assertEqual(cst.canonical_assembly_id(value), "GCF_000000001.1")
+
+    def test_canonical_assembly_id_keeps_non_accession_name(self):
+        value = "assembly_normalized"
+        self.assertEqual(cst.canonical_assembly_id(value), "assembly_normalized")
+
     def test_clean_subject_title_removes_known_tokens_and_normalizes_spaces(self):
         title = "XP_12345.1 LOW QUALITY PROTEIN: capsid [Some virus]"
         self.assertEqual(cst.clean_subject_title(title), "capsid")

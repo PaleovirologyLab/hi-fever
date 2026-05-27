@@ -805,6 +805,178 @@ class TestNextflowModules(unittest.TestCase):
             self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
             content = summary_path.read_text(encoding="utf-8")
             self.assertIn("element_type", content)
+            self.assertIn("TestHost", content)
+
+    def test_create_summary_table_custom_non_accession_metadata_match(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_custom_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-summary-custom-local-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_rvdb = run_dir / "reciprocal-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "contig_1:1-300"
+            assembly_id = "assembly_normalized"
+            record_id = "BAV60921.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    record_id,
+                    "99.0",
+                    "100",
+                    "0",
+                    "0",
+                    "1",
+                    "300",
+                    "1",
+                    "100",
+                    "0.0",
+                    "500",
+                    "BAV60921.1|viral polymerase",
+                    "MK",
+                ]
+            )
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "record_id\tall_taxonomy\tfamily\tviral_order\tviral_kingdom\n"
+                "BAV60921.1\tViruses; Negarnaviricota\tBornaviridae\tMononegavirales\tOrthornavirae\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\t{assembly_id}\n", encoding="utf-8")
+            assembly_metadata.write_text(f"LocalHost\t{assembly_id}\n", encoding="utf-8")
+
+            genewise_cols = [
+                "contig_1",
+                "1",
+                "300",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_name = (outdir / "summary_manifest.txt").read_text(encoding="utf-8").strip()
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("LocalHost", content)
+
+    def test_create_summary_table_custom_missing_metadata_defaults_unknown_host(self):
+        script = REPO_ROOT / "tests" / "nf" / "create_summary_custom_test.nf"
+
+        with tempfile.TemporaryDirectory(prefix="hi-fever-summary-custom-unknown-") as tmpdir:
+            run_dir = Path(tmpdir)
+            outdir = run_dir / "out"
+            outdir.mkdir(parents=True, exist_ok=True)
+
+            reciprocal_rvdb = run_dir / "reciprocal-matches.dmnd.tsv"
+            taxonomy = run_dir / "hits_taxonomy.tsv"
+            assembly_map = run_dir / "locus_assembly_map.tsv"
+            assembly_metadata = run_dir / "assembly_metadata.tsv"
+            genewise = run_dir / "genewise.tsv"
+
+            query_locus = "contig_1:1-300"
+            record_id = "BAV60921.1"
+
+            reciprocal_row = "\t".join(
+                [
+                    query_locus,
+                    record_id,
+                    "99.0",
+                    "100",
+                    "0",
+                    "0",
+                    "1",
+                    "300",
+                    "1",
+                    "100",
+                    "0.0",
+                    "500",
+                    "BAV60921.1|viral polymerase",
+                    "MK",
+                ]
+            )
+            reciprocal_rvdb.write_text(reciprocal_row + "\n", encoding="utf-8")
+
+            taxonomy.write_text(
+                "record_id\tall_taxonomy\tfamily\tviral_order\tviral_kingdom\n"
+                "BAV60921.1\tViruses; Negarnaviricota\tBornaviridae\tMononegavirales\tOrthornavirae\n",
+                encoding="utf-8",
+            )
+
+            assembly_map.write_text(f"{query_locus}\tassembly_normalized\n", encoding="utf-8")
+            assembly_metadata.write_text("OtherHost\tother_assembly\n", encoding="utf-8")
+
+            genewise_cols = [
+                "contig_1",
+                "1",
+                "300",
+                "+",
+                query_locus,
+                "strict",
+                "1",
+                "1",
+                "1",
+                "1",
+                "ATGAAATAG",
+                "MK",
+                "0",
+                "0",
+                "0",
+            ]
+            genewise.write_text("\t".join(genewise_cols) + "\n", encoding="utf-8")
+
+            self.run_nf(
+                script,
+                {
+                    "reciprocal_rvdb": reciprocal_rvdb,
+                    "taxonomy": taxonomy,
+                    "assembly_map": assembly_map,
+                    "assembly_metadata": assembly_metadata,
+                    "genewise": genewise,
+                    "outdir": outdir,
+                },
+                run_dir,
+                env_extra={"PATH": f"{REPO_BIN}:{os.environ.get('PATH','')}"},
+            )
+
+            summary_name = (outdir / "summary_manifest.txt").read_text(encoding="utf-8").strip()
+            summary_path = next((run_dir / "work").rglob(summary_name), None)
+            self.assertTrue(summary_path and summary_path.exists(), "summary output file not found")
+            content = summary_path.read_text(encoding="utf-8")
+            self.assertIn("unknown_host", content)
 
     def test_taxonomy_present_full_synthetic(self):
         script = REPO_ROOT / "tests" / "nf" / "create_summary_full_test.nf"
