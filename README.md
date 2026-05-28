@@ -57,11 +57,18 @@ Pixi bootstrap smoke-test example:
 ## Test run
 To experiment with and explore HI-FEVER options we provide instructions on running a small bundled dataset below. Larger sample materials are also available on our Open Science Framework repository [here](https://osf.io/y357r/).
 
+Unzip the reciprocal databases with the following tar commands:
+```
+tar -xf MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz
+tar -xf MINI_rvdbv28_wtaxa.dmnd.tar.xz
+```
+
 **Preparation**
 
 Ensure the following files are available in `data/`:
 * `20_per_fam_no_retro.fasta` protein query file
 * `one_genome.ftp` or `genomes_n10_ftp.txt` ftp input file
+* `genome_human_ftp.txt` link to the human genome ftp
 * `taxdump.tar.gz` taxonomy map file
 * `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd` minimal reciprocal NR database
 * `MINI_rvdbv28_wtaxa.dmnd` minimal reciprocal RVDB database
