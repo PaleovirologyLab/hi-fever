@@ -14,7 +14,7 @@
 - Harnesses parallelisation to optimise compute resources
 - Scales from laptop to cluster
 - Conda, Pixi, and Apptainer compatible
-- LINUX, Windows and MAC compatible
+- Designed for Linux-first execution; macOS is suitable for development and Conda-based runs, and Windows use should be via WSL
 
 HI-FEVER provides a variety of output information about candidate EVEs, suited to many downstream purposes. Outputs include:
 - Genomic coordinates of candidate EVEs
@@ -25,9 +25,13 @@ HI-FEVER provides a variety of output information about candidate EVEs, suited t
 
 ## Installation and usage
 
-HI-FEVER is available for use on LINUX, Windows (WSL), and Mac. The repository currently supports:
+HI-FEVER is available for use on Linux and can also be developed or run in lighter configurations on macOS. Windows use should be through WSL. The repository currently supports:
 - bootstrap/setup via Conda or Pixi
 - pipeline execution via Nextflow `-profile conda` or `-profile apptainer`
+
+Recommended starting point:
+- use `-profile conda` for a first local run
+- use `-profile apptainer` when Apptainer is available and you want a more reproducible container-based execution
 
 Dockerfiles are present in `docker/`, but Docker is not currently configured as a first-class Nextflow profile in `conf/containers.config`.
 
@@ -35,7 +39,7 @@ Full documentation can be found in [the wiki](https://github.com/PaleovirologyLa
 
 ## Tests
 
-Run Python unit tests from the repository root:
+Run automated tests from the repository root:
 
 `python3 -m unittest discover -s tests -q`
 
@@ -46,29 +50,31 @@ This includes:
 
 Note: Nextflow-based tests are automatically skipped if `nextflow` is not available in `PATH`. Some environment-specific tests are also skipped when required tools such as `apptainer` are not installed.
 
+Pixi bootstrap smoke-test example:
+
+`pixi run nextflow run main.nf -stub-run --data_path tests/fixtures/e2e --assembly_mode local --assembly_file assembly.fna --query_file_aa query.fa --custom_reciprocal --custom_reciprocal_db reciprocal.dmnd --email you@example.com -profile conda`
+
 ## Test run
-To experiment with and explore HI-FEVER options we provide instructions on running a test dataset below. All data used for this test are available on our Open Science Framework repository [here](https://osf.io/y357r/) in the sample_run folder.
+To experiment with and explore HI-FEVER options we provide instructions on running a small bundled dataset below. Larger sample materials are also available on our Open Science Framework repository [here](https://osf.io/y357r/).
 
 **Preparation**
 
-Ensure the required files are in the hi-fever/data folder:
-* `query_20perfamNoRetro.fasta` protein query file
-* `genome_human_ftp.txt` link to the human genome ftp
+Ensure the following files are available in `data/`:
+* `20_per_fam_no_retro.fasta` protein query file
+* `one_genome.ftp` or `genomes_n10_ftp.txt` ftp input file
 * `taxdump.tar.gz` taxonomy map file
-* `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz`: the minimal database built from the NCBI non-redundant database
-* `MINI_rvdbv28_wtaxa.dmnd.tar.xz`: the minimal database built from the RVDB database
+* `MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd` minimal reciprocal NR database
+* `MINI_rvdbv28_wtaxa.dmnd` minimal reciprocal RVDB database
 
-Unzip the reciprocal databases with the following tar commands:
-```
-tar -xf MINI-nr_rep_seq-clustered_70id_80c_wtaxa.dmnd.tar.xz
-tar -xf MINI_rvdbv28_wtaxa.dmnd.tar.xz
-```
-
-If using Conda, activate the environment and run with `-profile conda`. If using Pixi, run the workflow from within the Pixi environment or via Pixi tasks. For containerized execution, use `-profile apptainer`.
+If using Conda, activate the environment and run with `-profile conda`. If using Pixi, run the workflow through `pixi run ...`. For containerized execution, use `-profile apptainer`.
 
 Run the HI-FEVER workflow from the root hi-fever folder with the following command (replacing the email address):
 
-`nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file human_T2T_ftp.txt --email john.smith@email.com -profile conda`
+`nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file one_genome.ftp --email john.smith@email.com -profile conda`
+
+Equivalent Pixi-driven command:
+
+`pixi run nextflow run main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file one_genome.ftp --email john.smith@email.com -profile conda`
 
 ### Assembly input modes
 
@@ -84,6 +90,10 @@ Local mode example:
 Optional in local mode:
 * `--assembly_metadata_file` for a tab-separated file with two columns: `hostName`, `assembly_id`.
 * `--allow_missing_taxonomy true` only if you explicitly want the workflow to continue without taxonomy lookup.
+
+Assembly IDs in local mode are derived from the full input filename stem:
+* compression and FASTA suffixes such as `.gz`, `.fa`, `.fna`, `.fasta` are removed
+* the remaining filename stem is kept as the assembly identifier in downstream outputs
 
 If taxonomy/metadata files are not available in local mode:
 * Core locus discovery, reciprocal search, and genewise reconstruction still run.
@@ -110,4 +120,5 @@ HI-FEVER is based on the following libraries and programs directory along with t
 ### Citation
 Please include the following citation when using HI-FEVER in your projects.
 
-Barreat, J.G.N., Baena-Munoz, L., Harding, E.F., Kinsella, C.M. \& Katzourakis, A. HI-FEVER GitHub and data repository. DOI: [https://doi.org/10.17605/OSF.IO/Y357R](https://doi.org/10.17605/OSF.IO/Y357R)
+Laura Muñoz-Baena, Emma F Harding, Jose Gabriel Nino Barreat, Cormac M Kinsella, Aris Katzourakis. HI-FEVER: a Nextflow pipeline for the high-throughput discovery and annotation of endogenous viral elements. Bioinformatics.
+DOI: [https://doi.org/10.1093/bioinformatics/btaf610](https://doi.org/10.1093/bioinformatics/btaf610)

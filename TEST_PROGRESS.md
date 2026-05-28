@@ -599,6 +599,15 @@ Type: `status snapshot`
   - the workflow ignored the error
   - this remains a follow-up item outside the work completed here
 
+### GENEWISE investigation note
+- The `GENEWISE` note observed during `main.nf -stub-run` was investigated.
+- Conclusion:
+  - this was a `-stub-run` artifact, not evidence of a confirmed real-mode pipeline bug
+  - `GENEWISE` has `errorStrategy 'ignore'`, and the failure appeared because workflow-level stub outputs upstream were too minimal for the real downstream script
+- We explicitly chose not to continue the stub-completeness path.
+  - Reason: making every downstream process stub-safe would improve workflow-graph tests, but it would not materially increase confidence that the real pipeline logic works
+  - Priority was shifted back to real validation work instead
+
 ### Remaining work
 - Validate local mode under `-profile apptainer` in an environment with `apptainer` available.
 - Validate pixi bootstrap for the supported execution profiles:
@@ -613,3 +622,86 @@ Type: `status snapshot`
   - supported runtime profiles (`conda`, `apptainer`)
   - supported bootstrap paths (`conda`, `pixi`)
 - Run the full test suite serially and record one clean final result.
+
+## Validation Update — 2026-05-27
+Type: `validation snapshot`
+
+### Full serial test suite
+- `python3 -m unittest discover -s tests -q` -> passed
+- Result:
+  - `Ran 31 tests in 105.075s`
+  - `OK (skipped=2)`
+
+### Pixi bootstrap validation
+- Confirmed `pixi` is available locally:
+  - `pixi 0.48.1`
+- Ran a local-mode `main.nf -stub-run` through Pixi with `-profile conda`.
+- Observed successful startup and downstream task execution through at least:
+  - `HIFEVER:BUILD_QUERY`
+  - `HIFEVER:NORMALIZE_ASSEMBLY_HEADERS`
+  - `HIFEVER:ASSEMBLY_STATS`
+- Conclusion:
+  - Pixi successfully bootstraps Nextflow and reaches real pipeline tasks under the supported `conda` profile in this environment.
+  - This session did not produce a clean end-to-end Pixi completion result, so Pixi should be treated as partially validated rather than fully closed.
+
+### Remaining blockers after this validation
+- `apptainer` runtime validation is still unavailable in the current environment.
+- Pixi with `-profile apptainer` remains unvalidated.
+- A clean end-to-end Pixi completion result is still desirable before calling the bootstrap path fully proven.
+
+## Documentation Cleanup Plan — 2026-05-28
+Type: `pre-PR checklist`
+
+### 1. README accuracy
+- Fix stale sample filenames in the test/example section.
+  - Reason: current examples do not consistently match the files that actually exist in `data/`.
+- Clarify the support matrix.
+  - Reason: users need a clean distinction between bootstrap (`conda`, `pixi`) and runtime (`-profile conda`, `-profile apptainer`).
+- Soften platform claims.
+  - Reason: broad Linux/Windows/Mac wording should reflect practical support more precisely.
+- Add a short recommendation on which runtime to use first.
+  - Reason: `-profile conda` is currently the safest default starting point.
+- Make Pixi usage explicit with real commands.
+  - Reason: the repo advertises Pixi and should show how users actually invoke it.
+- Ensure local-mode docs match current behavior.
+  - Reason: `--assembly_metadata_file`, strict taxonomy-by-default, and degraded taxonomy mode should be described consistently.
+
+### 2. AGENTS.md alignment
+- Remove the `No Tests Yet` statement.
+  - Reason: it is now false.
+- Update required-input guidance.
+  - Reason: `--ftp_file` is not universally required because local mode exists.
+- Update execution guidance.
+  - Reason: `-with_docker` is outdated relative to the configured profiles.
+- Add local-mode awareness.
+  - Reason: contributors should know the pipeline supports `--assembly_mode local` and optional `--assembly_metadata_file`.
+- Mention the real test layout.
+  - Reason: contributors should know where unit, module, and workflow tests live.
+
+### 3. Pixi-facing documentation
+- Review `pixi.toml` task names and commands against current repo examples.
+  - Reason: stale task commands make Pixi support look broken even if the pipeline code is fine.
+- Decide whether Pixi tasks are maintained examples or convenience commands.
+  - Reason: documentation should reflect that support level honestly.
+- Ensure at least one documented Pixi smoke-test command is valid now.
+  - Reason: users need one reliable bootstrap path.
+
+### 4. Runtime/documentation consistency
+- Decide whether `nextflow.config` should keep default resume disabled.
+  - Reason: this affects user experience and test stability.
+- Make Docker wording explicit.
+  - Reason: Docker artifacts exist, but Docker is not a first-class Nextflow profile in the active config.
+- Confirm Apptainer wording reflects current evidence.
+  - Reason: it has been exercised enough to be meaningful, but support claims should still stay precise.
+
+### 5. Repo hygiene notes for PR
+- Decide whether to exclude `pixi.lock` from the PR.
+  - Reason: it changed as a side effect, not as an intentional dependency update.
+- Decide whether `cluster-hi-fever.slurm`, `cleanup_local.sh`, and `environment_no_builds.yml` are still maintained.
+  - Reason: stale helper files reduce trust in the repo surface.
+- Update `TEST_PROGRESS.md` with the latest ID-fix and passing test state.
+  - Reason: the tracker should match the current branch state before PR.
+
+
+Token usage: total=4,832,536 input=4,764,670 (+ 28,593,280 cached) output=67,866 (reasoning 17,103)
+To continue this session, run codex resume 019e68e1-106f-7f11-9b0d-e41b73b8afa8
