@@ -23,8 +23,7 @@ process EXTRACT_SEQS_ANNOTATE_MATCHES {
     # Prepare variables
 
     dbpath=\$(readlink -f \$(echo ${assembly_nsq_db} | cut -d ' ' -f1) | sed 's/.nsq//g; s/\\.[0-9][0-9]\$//g')
-    filename=\$(echo \$dbpath | sed 's/\\.gz//g; s/\\/.*\\///g')
-    assemblyID=\$(echo \$filename | sed 's/_genomic.*//')
+    assemblyID="${meta.id}"
 
     # Intersect domains & produce non-redundant BED:
     # Converts DIAMOND tsv to ascending assembly coordinate ranges, sorts to BED compatibility (contig and start position).
@@ -55,12 +54,12 @@ process EXTRACT_SEQS_ANNOTATE_MATCHES {
 
     # First coordinate range extraction (strictly overlapping alignments)
     awk '{print \$1, \$2"-"\$3}' "\${assemblyID}_strict_coords.bed" | \
-    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_strict.fasta"
+    blastdbcmd -entry_batch - -db \$dbpath > "\${assemblyID}_strict.fasta"
 
     # Second coordinate range extraction (allow interval and add flanks)
     bedtools merge -d ${params.interval} -i "\${assemblyID}_strict_coords.bed" | \
     awk -v flank=${params.flank} '{if(\$2-flank < 1) print \$1, 1"-"\$3+flank; else print \$1, \$2-flank"-"\$3+flank}' | \
-    blastdbcmd -entry_batch - -db \$dbpath > "\${filename}_context.fasta"
+    blastdbcmd -entry_batch - -db \$dbpath > "\${assemblyID}_context.fasta"
 
     # Generate assemblyID to locus dictionary
     awk -v var="\$assemblyID" 'BEGIN{OFS="\t"}; {print \$1":"\$2"-"\$3, var}' "\${assemblyID}_strict_coords.bed" > \

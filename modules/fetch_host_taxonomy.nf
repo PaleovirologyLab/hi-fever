@@ -11,10 +11,16 @@ process FETCH_HOST_TAXONOMY {
 	path "host_tax_information.tsv"
 	publishDir "${params.outdir}/sql", mode: "copy", pattern: "host_tax_information.tsv"
 
+	script:
 	"""
 
 	get_lineage_from_assembly_id.py ${assembly_metadata} ${params.email} --outfile host_tax_information.tsv
 	
+	"""
+
+	stub:
+	"""
+	printf "assembly_id\tlineage\nstub\tN/A\n" > host_tax_information.tsv
 	"""
 
 }

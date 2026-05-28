@@ -10,6 +10,13 @@ import argparse
 import sys
 import os
 
+def canonical_assembly_id(value):
+    text = str(value)
+    text = os.path.basename(text)
+    text = re.sub(r"\.gz$", "", text)
+    text = re.sub(r"\.(fa|fna|fasta)$", "", text)
+    return text
+
 def clean_subject_title(title):
     """
     Remove unwanted information from hit title
@@ -494,10 +501,14 @@ def main():
     
     # === Assembly metadata
     a_map = pd.read_csv(args.assembly_map, sep='\t', header=None, names=['query_locus', 'assembly'])
-    a_map["assembly"] = a_map["assembly"].astype(str).str.extract(r"\b([A-Z]{3}_[0-9]+(?:\.[0-9]+)?)")
+    a_map["assembly"] = a_map["assembly"].astype(str)
+    a_map["assembly_key"] = a_map["assembly"].apply(canonical_assembly_id)
 
     metadata = pd.read_csv(args.assembly_metadata, sep='\t', usecols=[0, 1], header=None, names=['hostName', 'assembly'])
-    host = pd.merge(a_map, metadata, on="assembly", how="inner")
+    metadata["assembly"] = metadata["assembly"].astype(str)
+    metadata["assembly_key"] = metadata["assembly"].apply(canonical_assembly_id)
+    host = pd.merge(a_map, metadata[["hostName", "assembly_key"]], on="assembly_key", how="left")
+    host["hostName"] = host["hostName"].fillna("unknown_host")
 
     # === Genewise data
     genewise_res = pd.read_csv(args.genewise, sep='\t', usecols=[4, 10, 11, 12, 13, 14], header=None,

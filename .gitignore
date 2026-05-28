@@ -9,3 +9,14 @@ notes_and_issues.md
 # pixi environments
 .pixi
 *.egg-info
+
+# Python test/cache artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+bin/__pycache__/
+
+# Local test scratch outputs
+tests/tmp*/
+tests/.tmp/
+tests/**/tmp_*.txt

@@ -12,11 +12,17 @@ process FORWARD_DIAMOND {
     output:
     tuple val(meta), path("*.dmnd.tsv")
 
-    //publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*.dmnd.tsv"
-
+    stub:
+    """
+    printf "contig_1\t1\t3\tprotein_1\t1\t3\t1\t0.0\t50.0\t99.0\t3\t0\t0\n" > "${meta.id}_forward-matches-raw.dmnd.tsv"
     """
 
-    chunks=\$(echo ${assembly} | sed 's/_genomic.*/_genomic_chunks.fna.gz/')
+    //publishDir "${params.outdir}/forwardDiamond", mode: "copy", pattern: "*.dmnd.tsv"
+
+    script:
+    """
+
+    chunks="${meta.id}_chunks.fna.gz"
     cpu_count=\$(awk -v total_cpu=\$(nproc) 'BEGIN {printf "%.0f\\n", (total_cpu > 1) ? total_cpu / ${params.diamond_forks} : 1}')
 
     seqkit sliding -s ${params.chunk_size} -W ${params.chunk_size} -g ${assembly} -o \$chunks
@@ -34,7 +40,7 @@ process FORWARD_DIAMOND {
 
 	sed 's/_sliding:/\\t/' matches.out | sed 's/-/\\t/' | \
 		awk -v OFS='\\t' '{print \$1,\$2+\$4-1,\$2+\$5-1,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17}' \
-		> "${assembly}_forward-matches-raw.dmnd.tsv"
+		> "${meta.id}_forward-matches-raw.dmnd.tsv"
 
     """
 

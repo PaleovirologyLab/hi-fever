@@ -53,6 +53,12 @@ process FETCH_HITS_TAXONOMY_FROM_ACCNS {
 	output:
 	path "hits_taxonomy.tsv"
 
+	stub:
+	"""
+	printf "record_id\tall_taxonomy\tfamily\tviral_order\tviral_kingdom\nstub\tViruses; N/A\tN/A\tN/A\tN/A\n" > hits_taxonomy.tsv
+	"""
+
+	script:
 	"""
 
 	if [ ! -s ${all_diamond_hits} ]

@@ -10,6 +10,7 @@ include { ASSEMBLY_STATS } from '../modules/assembly_stats.nf'
 include { FETCH_HOST_TAXONOMY } from '../modules/fetch_host_taxonomy.nf'
 include { BUILD_HOST_TAXONOMY_TABLE } from '../modules/process_host_info.nf'
 include { BLASTDB } from '../modules/blast_db.nf'
+include { NORMALIZE_ASSEMBLY_HEADERS } from '../modules/normalize_headers.nf'
 
 // DIAMOND-related process
 include { BUILD_DIAMOND_DB as BUILD_QUERY} from '../modules/build_diamond_db.nf'
@@ -46,10 +47,14 @@ include { CONCATENATE_PUBLISH_TABLES as PUBLISH_ASSEMBLY_MAP} from '../modules/u
 
 workflow HIFEVER {
 
-	// Create channels for protein FASTA query, assembly list (ftp links)
+	// Create channels for protein FASTA query and select assembly source
 
+		def assembly_mode = (params.assembly_mode ?: 'ftp').toString().toLowerCase()
+		def allow_missing_taxonomy = (params.allow_missing_taxonomy ?: false) as boolean
 		def query_ch = Channel.fromPath("${params.data_path}/${params.query_file_aa}", checkIfExists: true)
-		def ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+		def ftp_ch = null
+		def fetched_assembly_files
+		def assembly_with_accession
 
 	// If user provides own DMND query db (--query_db), create DIAMOND query channel from path
 
@@ -65,17 +70,24 @@ workflow HIFEVER {
 
 		vir_db_ch = params.query_db ? user_dmnd_db : BUILD_QUERY("query", query_ch)
 
-	// Unpack ftp list, download assemblies
+	// Build assembly file channel from FTP list or local file(s)
 
-		fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
+		if (assembly_mode == 'ftp') {
+			ftp_ch = Channel.fromPath("${params.data_path}/${params.ftp_file}", checkIfExists: true)
+			fetched_assembly_files = PARSE_FTP(ftp_ch) | flatten | DOWNLOAD_ASSEMBLIES
+		} else {
+			fetched_assembly_files = Channel.fromPath("${params.data_path}/${params.assembly_file}", checkIfExists: true)
+			fetched_assembly_files = NORMALIZE_ASSEMBLY_HEADERS(fetched_assembly_files).normalized_fa
+		}
 
-	// Add assembly accession as a meta field alongside assembly file path
+	// Add assembly identifier as a meta field alongside assembly file path
 
 		assembly_with_accession = fetched_assembly_files.map { assembly ->
-										def fileName = assembly.baseName
-										def accession = fileName.split('_')[0..1].join('_')
+										def fileName = assembly.name
+										fileName = fileName.replaceFirst(/\.gz$/, '')
+										fileName = fileName.replaceFirst(/\.(fa|fna|fasta)$/, '')
 										def meta = [
-										id: accession
+										id: fileName
 										]
 										return [meta, assembly]
 								}
@@ -85,20 +97,35 @@ workflow HIFEVER {
 		assembly_stats = ASSEMBLY_STATS(fetched_assembly_files)
 			.collectFile(name: 'assembly_stats.tsv', newLine: false, storeDir: "${params.outdir}/sql")
 
-	// Get entrez metadata entries for either the downloaded assemblies or all eukaryotes
+	// Get assembly metadata
 
-		if (!params.get_all_metadata) {
+		if (assembly_mode == 'ftp' && !params.get_all_metadata) {
 			// Download metadata only for genomes on ftp file
 			metadata_channel = GET_METADATA(assembly_stats)
 			FETCH_HOST_TAXONOMY(metadata_channel.assembly_metadata)
 
-		} else {
+		} else if (assembly_mode == 'ftp' && params.get_all_metadata) {
 			// Download assembly metadata for all eukaryotes
 			DOWNLOAD_EXTRACT_HOST_METADATA()
 			def ncbi_tax_table = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
 			BUILD_HOST_TAXONOMY_TABLE( ftp_ch,
 									DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch,
 									ncbi_tax_table)
+			metadata_channel = [assembly_metadata: DOWNLOAD_EXTRACT_HOST_METADATA.out.assembly_metadata_ch]
+		} else {
+			if (params.assembly_metadata_file) {
+				metadata_channel = [
+					assembly_metadata: Channel.fromPath("${params.data_path}/${params.assembly_metadata_file}", checkIfExists: true)
+				]
+			} else {
+				def placeholder_metadata = assembly_with_accession
+					.map { meta, assembly -> "unknown_host\t${meta.id}\n" }
+					.collectFile(name: 'assembly_metadata.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+
+				metadata_channel = [
+					assembly_metadata: placeholder_metadata
+				]
+			}
 		}
 
 	// Run forward DIAMOND using chunks of the genome as queries against the viral DMND database
@@ -185,8 +212,15 @@ workflow HIFEVER {
 				best_hit_proteins_val = FIND_BEST_DIAMOND_HITS.out.best_hits_fa_ch.collect()
 				all_diamond_hits = FIND_BEST_DIAMOND_HITS.out.forward_plus_reciprocal_dmnd_hits.collect()
 
-				// Make taxonomy and publish table for proteins
-				hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_reciprocal_hits)
+				// Make taxonomy table for proteins, or placeholder if skipped
+				if (params.email) {
+					hits_taxonomy = FETCH_HITS_TAXONOMY_FROM_ACCNS(all_reciprocal_hits)
+				} else if (allow_missing_taxonomy) {
+					hits_taxonomy = Channel.of("record_id\tall_taxonomy\tfamily\tviral_order\tviral_kingdom\nN/A\tN/A\tN/A\tN/A\tN/A\n")
+						.collectFile(name: 'hits_taxonomy.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+				} else {
+					error "ERROR: '--email' is required for custom reciprocal taxonomy lookup, or set '--allow_missing_taxonomy true'."
+				}
 
 		} else {
 
@@ -205,13 +239,19 @@ workflow HIFEVER {
 			best_hit_proteins_val = FULL_RECIPROCAL_DIAMOND.out.best_hits_fa_ch.collect()
 			all_diamond_hits = FULL_RECIPROCAL_DIAMOND.out.mixed_hits.collect()
 
-			// Read taxonomy table to build hits taxonomy
-			def ncbi_tax_table_hits = Channel.fromPath("${params.data_path}/${params.ncbi_taxonomy_table}", checkIfExists: true)
-
-			// Build hits taxonomy from annotated diamond database
-			hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE(FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
-													FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
-													ncbi_tax_table_hits)
+			// Read taxonomy table to build hits taxonomy, or fallback to placeholder
+			def ncbi_taxonomy_path = file("${params.data_path}/${params.ncbi_taxonomy_table}")
+			if (ncbi_taxonomy_path.exists()) {
+				def ncbi_tax_table_hits = Channel.fromPath(ncbi_taxonomy_path.toString(), checkIfExists: true)
+				hits_taxonomy = BUILD_HITS_TAXONOMY_TABLE(FULL_RECIPROCAL_DIAMOND.out.reciprocal_nr_matches_ch,
+														FULL_RECIPROCAL_DIAMOND.out.reciprocal_rvdb_matches_ch,
+														ncbi_tax_table_hits)
+			} else if (allow_missing_taxonomy) {
+				hits_taxonomy = Channel.of("N/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\tN/A\n")
+					.collectFile(name: 'hits_taxonomy.tsv', newLine: false, storeDir: "${params.outdir}/sql")
+			} else {
+				error "ERROR: Missing '${params.data_path}/${params.ncbi_taxonomy_table}'. Provide taxonomy file or set '--allow_missing_taxonomy true'."
+			}
 
 		}
 

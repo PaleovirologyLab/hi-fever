@@ -1,5 +1,5 @@
 [project]
-authors = ["CormacKinsella <27350062+CormacKinsella@users.noreply.github.com>", "EmmaHarding <emma.harding@biology.ox.ac.uk>"]
+authors = ["Laura Munoz-Baena", "Emma Harding", "Jose Gabriel Nino Barreat", "Cormac Kinsella"]
 channels = ["conda-forge", "bioconda"]
 description = "hi-fever pixi base and test tasks"
 name = "hi-fever"
