@@ -12,8 +12,10 @@ import os
 
 def canonical_assembly_id(value):
     text = str(value)
-    match = re.search(r"(GCA|GCF)_\d+(?:\.\d+)?", text)
-    return match.group(0) if match else text
+    text = os.path.basename(text)
+    text = re.sub(r"\.gz$", "", text)
+    text = re.sub(r"\.(fa|fna|fasta)$", "", text)
+    return text
 
 def clean_subject_title(title):
     """
