@@ -68,6 +68,10 @@ Ensure the following files are available in `data/`:
 
 If using Conda, activate the environment and run with `-profile conda`. If using Pixi, run the workflow through `pixi run ...`. For containerized execution, use `-profile apptainer`.
 
+On Linux, installing the project with Pixi also provides `apptainer` in the Pixi environment, so `pixi run ... -profile apptainer` is the expected containerized entrypoint.
+
+HI-FEVER does not force resume by default. To reuse cached work from a previous run, add Nextflow's `-resume` flag.
+
 Run the HI-FEVER workflow from the root hi-fever folder with the following command (replacing the email address):
 
 `nextflow main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file one_genome.ftp --email john.smith@email.com -profile conda`
@@ -75,6 +79,10 @@ Run the HI-FEVER workflow from the root hi-fever folder with the following comma
 Equivalent Pixi-driven command:
 
 `pixi run nextflow run main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file one_genome.ftp --email john.smith@email.com -profile conda`
+
+To continue from a previous cached run:
+
+`nextflow run main.nf --query_file_aa 20_per_fam_no_retro.fasta --ftp_file one_genome.ftp --email john.smith@email.com -profile conda -resume`
 
 ### Assembly input modes
 
